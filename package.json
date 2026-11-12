@@ -1,6 +1,6 @@
 {
   "name": "com.sketch.sdk.ads",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "Sketch Ads SDK",
   "description": "Provider-neutral ad facade and optional Google Mobile Ads provider.",
   "unity": "2021.3",

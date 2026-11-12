@@ -1,5 +1,6 @@
 using Sketch.Sdk;
 using Sketch.Sdk.Samples;
+using System.Reflection;
 
 int assertions = 0;
 void Check(bool condition, string message)
@@ -136,7 +137,153 @@ pending.FinishInitialization(false);
 Check(SketchSdk.IsInitialized && ReferenceEquals(SketchSdk.Provider, replacement), "stale provider initialization cannot overwrite replacement state");
 Check(firstInitCallback == 1 && secondInitCallback == 1, "completed init callbacks are not repeated after provider replacement");
 
+var bannerProvider = new BannerTestProvider();
+int bannerEvents = 0;
+float lastBannerHeight = -1f;
+Action<float> bannerListener = height => { bannerEvents++; lastBannerHeight = height; };
+SketchSdk.BannerLayoutChanged += bannerListener;
+Check(SketchSdk.BannerHeightPixels == 0f, "banner occupancy is zero before initialization");
+SketchSdk.Initialize(bannerProvider);
+Check(SketchSdk.BannerHeightPixels == 0f, "banner occupancy is zero when not requested");
+SketchSdk.ShowBanner();
+Check(SketchSdk.BannerHeightPixels == 0f, "banner occupancy is zero while requested but loading");
+bannerProvider.SetLoadedHeight(88f);
+Check(SketchSdk.BannerHeightPixels == 88f, "loaded visible banner reports measured height");
+Check(bannerEvents == 1 && lastBannerHeight == 88f, "first positive occupancy is forwarded once");
+bannerProvider.SetLoadedHeight(88f);
+Check(bannerEvents == 1, "duplicate occupancy is suppressed");
+bannerProvider.SetLoadedHeight(0f);
+Check(SketchSdk.BannerHeightPixels == 0f && bannerEvents == 2 && lastBannerHeight == 0f,
+    "load failure clears visible occupancy and publishes zero once");
+bannerProvider.SetLoadedHeight(88f);
+Check(SketchSdk.BannerHeightPixels == 88f && bannerEvents == 3, "a later successful load restores measured occupancy");
+SketchSdk.HideBanner();
+Check(SketchSdk.BannerHeightPixels == 0f && bannerEvents == 4 && lastBannerHeight == 0f,
+    "hide clears occupancy and publishes zero once");
+SketchSdk.ShowBanner();
+bannerProvider.SetLoadedHeight(88f);
+Action<float> queuedStaleBannerCallback = bannerProvider.CaptureLayoutCallback();
+var bannerReplacement = new BannerTestProvider();
+SketchSdk.Initialize(bannerReplacement);
+Check(SketchSdk.BannerHeightPixels == 0f && lastBannerHeight == 0f, "provider replacement clears prior occupancy");
+int eventsAfterReplacement = bannerEvents;
+queuedStaleBannerCallback?.Invoke(120f);
+Check(SketchSdk.BannerHeightPixels == 0f && bannerEvents == eventsAfterReplacement,
+    "queued stale provider callback cannot change replacement occupancy");
+bannerProvider.SetLoadedHeight(120f);
+Check(SketchSdk.BannerHeightPixels == 0f && bannerEvents == eventsAfterReplacement,
+    "stale provider callback cannot change replacement occupancy");
+SketchSdk.ShowBanner();
+bannerReplacement.SetLoadedHeight(float.NaN);
+Check(SketchSdk.BannerHeightPixels == 0f, "non-finite banner measurement is rejected");
+bannerReplacement.SetLoadedHeight(float.PositiveInfinity);
+Check(SketchSdk.BannerHeightPixels == 0f, "infinite banner measurement is rejected");
+bannerReplacement.SetLoadedHeight(0f);
+Check(SketchSdk.BannerHeightPixels == 0f, "zero banner measurement is rejected");
+bannerReplacement.SetLoadedHeight(-2f);
+Check(SketchSdk.BannerHeightPixels == 0f, "negative banner measurement is rejected");
+bannerReplacement.SetLoadedHeight(64f);
+Check(SketchSdk.BannerHeightPixels == 64f, "valid measurement after invalid values is accepted");
+bannerReplacement.SetLoadedHeight(76f);
+Check(SketchSdk.BannerHeightPixels == 76f && lastBannerHeight == 76f,
+    "updated measured size replaces prior visible occupancy");
+int eventsBeforeReset = bannerEvents;
+typeof(SketchSdk).GetMethod("ResetStatics", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, null);
+Check(SketchSdk.BannerHeightPixels == 0f && bannerEvents == eventsBeforeReset + 1 && lastBannerHeight == 0f,
+    "subsystem reset hides occupancy and publishes zero once");
+int eventsAfterReset = bannerEvents;
+bannerReplacement.SetLoadedHeight(90f);
+Check(bannerEvents == eventsAfterReset, "reset detaches provider and facade listeners");
+var afterResetProvider = new BannerTestProvider();
+SketchSdk.Initialize(afterResetProvider);
+SketchSdk.ShowBanner();
+afterResetProvider.SetLoadedHeight(90f);
+Check(SketchSdk.BannerHeightPixels == 90f && bannerEvents == eventsAfterReset,
+    "post-reset provider works without retaining stale listeners");
+
+var legacyBannerProvider = new LegacyBannerTestProvider();
+SketchSdk.Initialize(legacyBannerProvider);
+SketchSdk.ShowBanner();
+legacyBannerProvider.SetHeight(52f);
+Check(SketchSdk.BannerHeightPixels == 52f,
+    "legacy banner provider retains queried height without the optional notifier");
+legacyBannerProvider.SetHeight(float.NaN);
+Check(SketchSdk.BannerHeightPixels == 0f, "legacy non-finite height is rejected");
+legacyBannerProvider.SetHeight(float.PositiveInfinity);
+Check(SketchSdk.BannerHeightPixels == 0f, "legacy infinite height is rejected");
+legacyBannerProvider.SetHeight(-1f);
+Check(SketchSdk.BannerHeightPixels == 0f, "legacy negative height is rejected");
+SketchSdk.HideBanner();
+Check(SketchSdk.BannerHeightPixels == 0f, "legacy provider hide clears queried height");
+
+var throwingSubscriberProvider = new BannerTestProvider();
+SketchSdk.Initialize(throwingSubscriberProvider);
+SketchSdk.ShowBanner();
+int healthySubscriberCalls = 0;
+Action<float> throwingSubscriber = _ => throw new InvalidOperationException("subscriber failure");
+Action<float> healthySubscriber = _ => healthySubscriberCalls++;
+SketchSdk.BannerLayoutChanged += throwingSubscriber;
+SketchSdk.BannerLayoutChanged += healthySubscriber;
+try { throwingSubscriberProvider.SetLoadedHeight(44f); }
+catch (InvalidOperationException) { }
+Check(healthySubscriberCalls == 1, "throwing banner subscriber does not block later listeners");
+SketchSdk.BannerLayoutChanged -= throwingSubscriber;
+SketchSdk.BannerLayoutChanged -= healthySubscriber;
+
+var reentrantProvider = new BannerTestProvider();
+SketchSdk.Initialize(reentrantProvider);
+SketchSdk.ShowBanner();
+var reentrantReplacement = new BannerTestProvider();
+int reconfigureHealthyCalls = 0;
+int staleLaterCalls = 0;
+Action<float> reconfiguringSubscriber = height => { if (height == 33f) SketchSdk.Initialize(reentrantReplacement); };
+Action<float> healthyReconfiguringSubscriber = height => { if (height == 33f) reconfigureHealthyCalls++; };
+Action<float> staleLaterSubscriber = height => { if (height == 33f) staleLaterCalls++; };
+SketchSdk.BannerLayoutChanged += healthyReconfiguringSubscriber;
+SketchSdk.BannerLayoutChanged += reconfiguringSubscriber;
+SketchSdk.BannerLayoutChanged += staleLaterSubscriber;
+reentrantProvider.SetLoadedHeight(33f);
+Check(reconfigureHealthyCalls == 1 && staleLaterCalls == 0 && SketchSdk.BannerHeightPixels == 0f,
+    "provider replacement during notification stops stale event delivery");
+SketchSdk.BannerLayoutChanged -= healthyReconfiguringSubscriber;
+SketchSdk.BannerLayoutChanged -= reconfiguringSubscriber;
+SketchSdk.BannerLayoutChanged -= staleLaterSubscriber;
+
 Console.WriteLine($"PASS: {assertions} assertions");
+
+sealed class BannerTestProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchBannerLayoutEvents
+{
+    public event Action<float> BannerLayoutChanged;
+    bool _requested;
+    float _height;
+    public void Initialize(Action<bool> callback) => callback?.Invoke(true);
+    public bool IsReady(SketchAdFormat format) => true;
+    public void ShowRewarded(Action<bool> callback) => callback?.Invoke(true);
+    public void ShowInterstitial(Action callback) => callback?.Invoke();
+    public void ShowAppOpen(Action callback) => callback?.Invoke();
+    public bool IsBannerReady => true;
+    public float BannerHeightPixels => _requested && _height > 0 ? _height : 0f;
+    public void ShowBanner() { _requested = true; BannerLayoutChanged?.Invoke(BannerHeightPixels); }
+    public void HideBanner() { _requested = false; BannerLayoutChanged?.Invoke(0f); }
+    public void SetLoadedHeight(float height) { _height = height; if (_requested) BannerLayoutChanged?.Invoke(BannerHeightPixels); }
+    public Action<float> CaptureLayoutCallback() => BannerLayoutChanged;
+}
+
+sealed class LegacyBannerTestProvider : ISketchAdsProvider, ISketchBannerAdsProvider
+{
+    bool _requested;
+    float _height;
+    public void Initialize(Action<bool> callback) => callback?.Invoke(true);
+    public bool IsReady(SketchAdFormat format) => true;
+    public void ShowRewarded(Action<bool> callback) => callback?.Invoke(true);
+    public void ShowInterstitial(Action callback) => callback?.Invoke();
+    public void ShowAppOpen(Action callback) => callback?.Invoke();
+    public bool IsBannerReady => true;
+    public float BannerHeightPixels => _requested ? _height : 0f;
+    public void ShowBanner() => _requested = true;
+    public void HideBanner() => _requested = false;
+    public void SetHeight(float height) => _height = height;
+}
 
 sealed class TestProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchAdCloseCapability
 {

@@ -7,6 +7,10 @@ namespace Sketch.Sdk
     public static class SketchSdk
     {
         static ISketchAdsProvider _provider;
+        static ISketchBannerLayoutEvents _bannerLayoutProvider;
+        static Action<float> _bannerLayoutHandler;
+        static float _bannerHeightPixels;
+        static bool _bannerRequested;
         static readonly List<Action<bool>> InitializationCallbacks = new List<Action<bool>>();
         static bool _initialized;
         static bool _initializing;
@@ -37,8 +41,10 @@ namespace Sketch.Sdk
             }
             if (provider != null && !ReferenceEquals(_provider, provider))
             {
+                ClearBannerLayoutProvider();
                 _provider = provider;
                 _providerGeneration++;
+                AttachBannerLayoutProvider(provider, _providerGeneration);
                 _initialized = false;
                 bool replacedPendingInitialization = _initializing;
                 _initializing = false;
@@ -59,6 +65,8 @@ namespace Sketch.Sdk
                     if (generation != _providerGeneration || !ReferenceEquals(currentProvider, _provider) || !_initializing) return;
                     _initializing = false;
                     _initialized = ok;
+                    if (!ok) PublishBannerHeight(0f);
+                    else RefreshBannerHeight(currentProvider, generation);
                     CompleteInitialization(ok);
                 });
             }
@@ -166,12 +174,19 @@ namespace Sketch.Sdk
 
         public static void ShowBanner()
         {
-            if (IsReady(SketchAdFormat.Banner) && _provider is ISketchBannerAdsProvider banner) banner.ShowBanner();
+            if (!IsReady(SketchAdFormat.Banner) || !(_provider is ISketchBannerAdsProvider banner)) return;
+            _bannerRequested = true;
+            try { banner.ShowBanner(); }
+            catch (Exception e) { _bannerRequested = false; Debug.LogWarning("[SketchAds] Banner show failed: " + e.Message); }
+            RefreshBannerHeight(_provider, _providerGeneration);
         }
 
         public static void HideBanner()
         {
-            if (_provider is ISketchBannerAdsProvider banner) banner.HideBanner();
+            _bannerRequested = false;
+            try { (_provider as ISketchBannerAdsProvider)?.HideBanner(); }
+            catch (Exception e) { Debug.LogWarning("[SketchAds] Banner hide failed: " + e.Message); }
+            PublishBannerHeight(0f);
         }
 
         public static bool ShowNativeInRect(SketchNativeRequest request, SketchNativeCallbacks callbacks = null)
@@ -228,7 +243,77 @@ namespace Sketch.Sdk
 
         public static bool IsNativeReady => IsReady(SketchAdFormat.Native);
         public static bool IsNativeVisible => _nativeVisible;
-        public static float BannerHeightPixels => (_provider as ISketchBannerAdsProvider)?.BannerHeightPixels ?? 0f;
+        /// <summary>Raised on the Unity main thread when visible banner occupancy changes.</summary>
+        public static event Action<float> BannerLayoutChanged;
+        /// <summary>Current finite positive banner height in pixels, or zero when hidden, unready, or invalid.</summary>
+        public static float BannerHeightPixels
+        {
+            get
+            {
+                if (!_bannerRequested || !IsReady(SketchAdFormat.Banner) || !(_provider is ISketchBannerAdsProvider banner)) return 0f;
+                if (_provider is ISketchBannerLayoutEvents) return _bannerHeightPixels;
+                return NormalizeBannerHeight(banner.BannerHeightPixels);
+            }
+        }
+
+        static void AttachBannerLayoutProvider(ISketchAdsProvider provider, int generation)
+        {
+            if (!(provider is ISketchBannerLayoutEvents layoutEvents)) return;
+            _bannerLayoutProvider = layoutEvents;
+            _bannerLayoutHandler = _ => RefreshBannerHeight(provider, generation);
+            _bannerLayoutProvider.BannerLayoutChanged += _bannerLayoutHandler;
+        }
+
+        static void ClearBannerLayoutProvider()
+        {
+            _bannerRequested = false;
+            try { (_provider as ISketchBannerAdsProvider)?.HideBanner(); }
+            catch (Exception e) { Debug.LogWarning("[SketchAds] Banner reset failed: " + e.Message); }
+            if (_bannerLayoutProvider != null && _bannerLayoutHandler != null)
+                _bannerLayoutProvider.BannerLayoutChanged -= _bannerLayoutHandler;
+            _bannerLayoutProvider = null;
+            _bannerLayoutHandler = null;
+            PublishBannerHeight(0f);
+        }
+
+        static void RefreshBannerHeight(ISketchAdsProvider provider, int generation)
+        {
+            if (generation != _providerGeneration || !ReferenceEquals(provider, _provider)) return;
+            if (!_bannerRequested || !IsReady(SketchAdFormat.Banner) || !(provider is ISketchBannerAdsProvider banner))
+            {
+                PublishBannerHeight(0f);
+                return;
+            }
+
+            PublishBannerHeight(NormalizeBannerHeight(banner.BannerHeightPixels));
+        }
+
+        static float NormalizeBannerHeight(float height)
+        {
+            return float.IsNaN(height) || float.IsInfinity(height) || height <= 0f ? 0f : height;
+        }
+
+        static void PublishBannerHeight(float height)
+        {
+            height = NormalizeBannerHeight(height);
+            if (_bannerHeightPixels == height) return;
+            _bannerHeightPixels = height;
+            Action<float> listeners = BannerLayoutChanged;
+            if (listeners == null) return;
+            Delegate[] subscribers = listeners.GetInvocationList();
+            int generation = _providerGeneration;
+            ISketchAdsProvider provider = _provider;
+            for (int i = 0; i < subscribers.Length; i++)
+            {
+                try { ((Action<float>)subscribers[i])(height); }
+                catch (Exception e)
+                {
+                    try { Debug.LogWarning("[SketchAds] Banner layout listener failed: " + e.Message); }
+                    catch { }
+                }
+                if (generation != _providerGeneration || !ReferenceEquals(provider, _provider) || _bannerHeightPixels != height) return;
+            }
+        }
 
         static void NativeShown(int generation)
         {
@@ -279,6 +364,8 @@ namespace Sketch.Sdk
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
+            ClearBannerLayoutProvider();
+            BannerLayoutChanged = null;
             FullscreenAdShowing = false;
             _fullscreenReserved = false;
             _fullscreenClosedAt = double.NegativeInfinity;
@@ -286,6 +373,7 @@ namespace Sketch.Sdk
             ClearNativeState();
             _nativeGeneration++;
             _providerGeneration++;
+            _provider = null;
             _initialized = false;
             _initializing = false;
             InitializationCallbacks.Clear();

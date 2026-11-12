@@ -7,6 +7,7 @@ A source UPM package for a provider-neutral ads facade and an opt-in Google Mobi
 - `SketchSdk.Initialize(provider, callback)` is the explicit bootstrap entry point. No provider or ready fake is constructed implicitly.
 - `ISketchAdsProvider` owns rewarded, interstitial and app-open mechanics.
 - Banner and native ads are optional roles (`ISketchBannerAdsProvider`, `ISketchNativeAdsProvider`). In-ad close support is a separate capability (`ISketchAdCloseCapability`).
+- `SketchSdk.BannerHeightPixels` preserves the legacy provider contract: it polls the initialized, ready, requested-visible provider and returns its finite positive `BannerHeightPixels`, otherwise zero. Providers implementing optional `ISketchBannerLayoutEvents` also signal asynchronous measured-height changes; legacy providers need not add the interface, but cannot signal changes asynchronously. The event is delivered on Unity's main thread. `IsBannerReady` remains the provider's banner-object readiness signal, so a ready banner object may still be loading an ad. The AdMob provider reports only its measured loaded height and uses zero while hidden, loading, failed or invalid; it does not estimate a fallback.
 - Placement, consent, remove-ads and reward decisions remain in the game's decision layer.
 - `ISketchAdsTelemetry` carries ad lifecycle events and raw AdMob paid values (micros plus currency) to a game-owned adapter. `ISketchIapTelemetry` carries successful store captures to a server adapter. The package does not grant entitlements.
 

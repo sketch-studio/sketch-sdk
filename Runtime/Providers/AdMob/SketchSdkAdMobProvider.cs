@@ -1,6 +1,5 @@
 #if SKETCHSDK_ADMOB
 using System;
-using System.Reflection;
 using GoogleMobileAds.Api;
 using UnityEngine;
 using Sketch.Sdk;
@@ -38,7 +37,8 @@ namespace Sketch.Sdk
         bool _bannerRequested;
         bool _bannerLoaded;
         float _bannerHeightPixels;
-        static readonly MethodInfo BannerHeightMethod = typeof(BannerView).GetMethod("GetHeightInPixels", Type.EmptyTypes);
+        int _bannerGeneration;
+        float _lastPublishedBannerHeight;
 
         public SketchSdkAdMobProvider(SketchAdMobConfig config, ISketchAdsTelemetry telemetry = null)
         {
@@ -46,26 +46,20 @@ namespace Sketch.Sdk
             _telemetry = telemetry;
             SketchSdk.NativeAttachTimeoutSeconds = config.NativeAttachTimeoutSeconds;
             SketchNativeLayout.DeviceScaleProvider = () => MobileAds.Utils.GetDeviceScale();
-            SketchNativeLayout.DeviceScaleProvider = () => MobileAds.Utils.GetDeviceScale();
         }
 
         public bool SupportsInAdClose => false;
         public bool IsBannerReady => _banner != null;
         public bool IsNativeReady => IsReady(SketchAdFormat.Native);
+        public event Action<float> BannerLayoutChanged;
 
         public float BannerHeightPixels
         {
             get
             {
-                if (!_bannerRequested) return 0f;
-                if (_bannerLoaded && _bannerHeightPixels > 0f) return _bannerHeightPixels;
-#if UNITY_EDITOR
-                return Screen.height * 0.09f;
-#else
-                float dpiScale = Screen.dpi > 0f ? Screen.dpi / 160f : 1f;
-                float shortDp = Mathf.Min(Screen.width, Screen.height) / dpiScale;
-                return (shortDp >= 600f ? 96f : 56f) * dpiScale;
-#endif
+                if (!_initialized || !_bannerRequested || !_bannerLoaded || float.IsNaN(_bannerHeightPixels) ||
+                    float.IsInfinity(_bannerHeightPixels) || _bannerHeightPixels <= 0f) return 0f;
+                return _bannerHeightPixels;
             }
         }
 
@@ -238,8 +232,20 @@ namespace Sketch.Sdk
             }
         }
 
-        public void ShowBanner() { try { _bannerRequested = true; _banner?.Show(); } catch (Exception e) { Debug.LogWarning($"[SketchAds] Banner show failed: {e.Message}"); } }
-        public void HideBanner() { try { _bannerRequested = false; _banner?.Hide(); } catch (Exception e) { Debug.LogWarning($"[SketchAds] Banner hide failed: {e.Message}"); } }
+        public void ShowBanner()
+        {
+            try { _bannerRequested = true; _banner?.Show(); }
+            catch (Exception e) { _bannerRequested = false; Debug.LogWarning($"[SketchAds] Banner show failed: {e.Message}"); }
+            PublishBannerLayout();
+        }
+
+        public void HideBanner()
+        {
+            _bannerRequested = false;
+            try { _banner?.Hide(); }
+            catch (Exception e) { Debug.LogWarning($"[SketchAds] Banner hide failed: {e.Message}"); }
+            PublishBannerLayout();
+        }
 
         public bool ShowNative(SketchNativeLayout layout)
         {
@@ -454,16 +460,6 @@ namespace Sketch.Sdk
             };
         }
 
-        void HookLife(BannerView ad, string format, string unit)
-        {
-            ad.OnBannerAdLoaded += () => LogLoaded(format, unit, SafeInfo(() => ad.GetResponseInfo()));
-            ad.OnBannerAdLoadFailed += e => LogLoadFailed(format, unit, e);
-            ad.OnAdImpressionRecorded += () => LogAd("ad_impression", format, unit);
-            ad.OnAdClicked += () => LogAd("ad_clicked", format, unit);
-            ad.OnAdFullScreenContentOpened += () => LogAd("ad_opened", format, unit);
-            ad.OnAdFullScreenContentClosed += () => LogAd("ad_closed", format, unit);
-        }
-
         static ResponseInfo SafeInfo(Func<ResponseInfo> get)
         {
             try { return get(); } catch { return null; }
@@ -562,25 +558,50 @@ namespace Sketch.Sdk
 
         void LoadBanner()
         {
-            _banner?.Destroy();
-            _banner = new BannerView(_config.BannerId, AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth), AdPosition.Bottom);
-            _banner.OnAdPaid += value => OnMainThread(() => ReportPaid("banner", value, _config.BannerId, SafeInfo(() => _banner.GetResponseInfo())));
-            _banner.OnBannerAdLoaded += () =>
+            int generation = ++_bannerGeneration;
+            BannerView previous = _banner;
+            _banner = null;
+            _bannerLoaded = false;
+            _bannerHeightPixels = 0f;
+            previous?.Destroy();
+            var banner = new BannerView(_config.BannerId, AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth), AdPosition.Bottom);
+            _banner = banner;
+            bool IsCurrent() => generation == _bannerGeneration && ReferenceEquals(banner, _banner);
+            banner.OnAdPaid += value => OnMainThread(() =>
             {
+                if (IsCurrent()) ReportPaid("banner", value, _config.BannerId, SafeInfo(() => banner.GetResponseInfo()));
+            });
+            banner.OnBannerAdLoaded += () => OnMainThread(() =>
+            {
+                if (!IsCurrent()) return;
                 _bannerLoaded = true;
-                _bannerHeightPixels = ReadBannerHeightPixels(_banner);
-            };
-            _banner.OnBannerAdLoadFailed += _ => { _bannerLoaded = false; _bannerHeightPixels = 0f; };
-            HookLife(_banner, "banner", _config.BannerId);
-            _banner.LoadAd(NewRequest());
-            _banner.Hide();
+                _bannerHeightPixels = banner.GetHeightInPixels();
+                PublishBannerLayout();
+                LogLoaded("banner", _config.BannerId, SafeInfo(() => banner.GetResponseInfo()));
+            });
+            banner.OnBannerAdLoadFailed += error => OnMainThread(() =>
+            {
+                if (!IsCurrent()) return;
+                _bannerLoaded = false;
+                _bannerHeightPixels = 0f;
+                PublishBannerLayout();
+                LogLoadFailed("banner", _config.BannerId, error);
+            });
+            banner.OnAdImpressionRecorded += () => OnMainThread(() => { if (IsCurrent()) LogAd("ad_impression", "banner", _config.BannerId); });
+            banner.OnAdClicked += () => OnMainThread(() => { if (IsCurrent()) LogAd("ad_clicked", "banner", _config.BannerId); });
+            banner.OnAdFullScreenContentOpened += () => OnMainThread(() => { if (IsCurrent()) LogAd("ad_opened", "banner", _config.BannerId); });
+            banner.OnAdFullScreenContentClosed += () => OnMainThread(() => { if (IsCurrent()) LogAd("ad_closed", "banner", _config.BannerId); });
+            banner.LoadAd(NewRequest());
+            banner.Hide();
+            PublishBannerLayout();
         }
 
-        static float ReadBannerHeightPixels(BannerView banner)
+        void PublishBannerLayout()
         {
-            if (banner == null || BannerHeightMethod == null) return 0f;
-            try { return Convert.ToSingle(BannerHeightMethod.Invoke(banner, null)); }
-            catch { return 0f; }
+            float height = BannerHeightPixels;
+            if (_lastPublishedBannerHeight == height) return;
+            _lastPublishedBannerHeight = height;
+            BannerLayoutChanged?.Invoke(height);
         }
 
         void CompleteRewarded()
