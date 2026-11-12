@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Runtime/Telemetry/*.cs" />
+    <Compile Include="../../Runtime/Integrations/SketchAnalytics/*.cs" />
+  </ItemGroup>
+</Project>

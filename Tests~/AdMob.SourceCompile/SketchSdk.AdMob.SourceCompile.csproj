@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>$(DefineConstants);SKETCHSDK_ADMOB</DefineConstants>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <GmaUseWildcard Condition="'$(GmaUseWildcard)' == ''">true</GmaUseWildcard>
+    <GmaIncludeUnity Condition="'$(GmaIncludeUnity)' == ''">true</GmaIncludeUnity>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../Runtime/**/*.cs" />
+    <Reference Include="$(UnityManagedPath)/UnityEngine.CoreModule.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GmaManagedPath)/GoogleMobileAds*.dll" Condition="'$(GmaUseWildcard)' == 'true'">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(GmaManagedPath)/GoogleMobileAds.dll" Condition="'$(GmaUseWildcard)' != 'true'"><Private>false</Private></Reference>
+    <Reference Include="$(GmaManagedPath)/GoogleMobileAds.Core.dll" Condition="'$(GmaUseWildcard)' != 'true'"><Private>false</Private></Reference>
+    <Reference Include="$(GmaManagedPath)/GoogleMobileAds.Common.dll" Condition="'$(GmaUseWildcard)' != 'true'"><Private>false</Private></Reference>
+    <Reference Include="$(GmaManagedPath)/GoogleMobileAds.Unity.dll" Condition="'$(GmaUseWildcard)' != 'true' and '$(GmaIncludeUnity)' == 'true'"><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <Target Name="ValidateExternalCompileReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(UnityManagedPath)' == ''" Text="Pass /p:UnityManagedPath to the Unity Editor Managed directory." />
+    <Error Condition="'$(GmaManagedPath)' == ''" Text="Pass /p:GmaManagedPath to the Google Mobile Ads plugin directory." />
+    <Error Condition="!Exists('$(UnityManagedPath)/UnityEngine.CoreModule.dll')" Text="UnityEngine.CoreModule.dll was not found under UnityManagedPath." />
+    <Error Condition="!Exists('$(GmaManagedPath)/GoogleMobileAds.dll')" Text="GoogleMobileAds.dll was not found under GmaManagedPath." />
+  </Target>
+</Project>

@@ -1,0 +1,20 @@
+{
+  "name": "SketchSdk.AdMob",
+  "rootNamespace": "Sketch.Sdk",
+  "references": [
+    "SketchSdk.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "GoogleMobileAds.dll",
+    "GoogleMobileAds.Core.dll",
+    "GoogleMobileAds.Common.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": ["SKETCHSDK_ADMOB"],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

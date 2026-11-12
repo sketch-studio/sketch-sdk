@@ -1,0 +1,2 @@
+# Unity writes spaces after empty serialized metadata values.
+*.meta -whitespace

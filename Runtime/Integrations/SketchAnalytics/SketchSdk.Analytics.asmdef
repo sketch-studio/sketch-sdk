@@ -1,0 +1,19 @@
+{
+  "name": "SketchSdk.Analytics",
+  "rootNamespace": "Sketch.Sdk.Integrations",
+  "references": [
+    "SketchSdk.Runtime",
+    "Sketch.Analytics"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": ["SKETCHSDK_ANALYTICS"],
+  "versionDefines": [
+    { "name": "com.sketch.analytics", "expression": "1.0.0", "define": "SKETCHSDK_ANALYTICS" }
+  ],
+  "noEngineReferences": false
+}
