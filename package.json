@@ -1,10 +1,27 @@
 {
-  "name": "com.sketch.sdk.ads",
-  "version": "0.2.0",
-  "displayName": "Sketch Ads SDK",
-  "description": "Provider-neutral ad facade and optional Google Mobile Ads provider.",
+  "name": "com.sketch.sdk",
+  "version": "1.0.0",
+  "displayName": "Sketch SDK",
+  "description": "One-package mobile monetization SDK: AdMob ads (banner, interstitial, rewarded, app open, native) with pacing, Google UMP consent, Sketch Server analytics + remote config + ad/IAP revenue. Fill Sketch SDK > Settings and call SketchAds.",
   "unity": "2021.3",
-  "author": { "name": "Sketch" },
-  "keywords": ["ads", "admob", "monetization"],
-  "license": "UNLICENSED"
+  "author": {
+    "name": "Sketch"
+  },
+  "keywords": [
+    "ads",
+    "admob",
+    "monetization",
+    "analytics",
+    "remote config",
+    "consent",
+    "ump"
+  ],
+  "license": "UNLICENSED",
+  "samples": [
+    {
+      "displayName": "Quick Start",
+      "description": "Splash with cold-start app open, ads buttons, privacy button.",
+      "path": "Samples~/QuickStart"
+    }
+  ]
 }

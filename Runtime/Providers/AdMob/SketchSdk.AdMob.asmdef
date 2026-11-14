@@ -11,10 +11,13 @@
   "precompiledReferences": [
     "GoogleMobileAds.dll",
     "GoogleMobileAds.Core.dll",
-    "GoogleMobileAds.Common.dll"
+    "GoogleMobileAds.Common.dll",
+    "GoogleMobileAds.Ump.dll"
   ],
   "autoReferenced": true,
-  "defineConstraints": ["SKETCHSDK_ADMOB"],
+  "defineConstraints": [
+    "SKETCHSDK_ADMOB"
+  ],
   "versionDefines": [],
   "noEngineReferences": false
 }

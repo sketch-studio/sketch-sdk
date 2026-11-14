@@ -1,61 +1,136 @@
-# Sketch Ads SDK
+# Sketch SDK
 
-A source UPM package for a provider-neutral ads facade and an opt-in Google Mobile Ads provider. The package contains no game policy, serialized assets, third-party binaries, or service credentials.
+One Unity package for mobile monetization, modeled on Bounce SDK but **AdMob only** (no AppLovin MAX):
 
-## Package boundary
+- **Ads (Google AdMob):** banner, interstitial, rewarded, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
+- **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads (rewarded keeps working). All overridable from remote config without a new build.
+- **Consent:** Google UMP (GDPR / US states) before ads, privacy-options button API. Ads are requested only when UMP allows it; if the form could not be answered (offline, dismissed) ads start after the privacy form or on the next resume, and the game never waits on it.
+- **Sketch Server:** analytics events, sessions, ad revenue (per paid impression), IAP revenue, remote config + A/B `configId`. Offline queue on disk, batched, retried.
+- **Firebase Analytics (optional):** used automatically when Firebase Analytics is installed (UPM or .unitypackage); add google-services.json / GoogleService-Info.plist from the Firebase console.
+- **Editor:** settings window, fake ads in Play Mode (everything ready, rewarded grants), automatic `SKETCHSDK_ADMOB` define, App ID sync into the Google Mobile Ads settings, release-build gate.
 
-- `SketchSdk.Initialize(provider, callback)` is the explicit bootstrap entry point. No provider or ready fake is constructed implicitly.
-- `ISketchAdsProvider` owns rewarded, interstitial and app-open mechanics.
-- Banner and native ads are optional roles (`ISketchBannerAdsProvider`, `ISketchNativeAdsProvider`). In-ad close support is a separate capability (`ISketchAdCloseCapability`).
-- `SketchSdk.BannerHeightPixels` preserves the legacy provider contract: it polls the initialized, ready, requested-visible provider and returns its finite positive `BannerHeightPixels`, otherwise zero. Providers implementing optional `ISketchBannerLayoutEvents` also signal asynchronous measured-height changes; legacy providers need not add the interface, but cannot signal changes asynchronously. The event is delivered on Unity's main thread. `IsBannerReady` remains the provider's banner-object readiness signal, so a ready banner object may still be loading an ad. The AdMob provider reports only its measured loaded height and uses zero while hidden, loading, failed or invalid; it does not estimate a fallback.
-- Placement, consent, remove-ads and reward decisions remain in the game's decision layer.
-- `ISketchAdsTelemetry` carries ad lifecycle events and raw AdMob paid values (micros plus currency) to a game-owned adapter. `ISketchIapTelemetry` carries successful store captures to a server adapter. The package does not grant entitlements.
+Requires Unity 2021.3+ (tested on Unity 6000.3). Ads need the Google Mobile Ads Unity plugin (11.x tested).
 
-## Install
+## 1. Install (new project, 5 minutes)
 
-Add this repository/folder as a Unity Package Manager package. Install the Google Mobile Ads Unity plugin separately if AdMob is wanted. The provider assembly is opt-in: add scripting define `SKETCHSDK_ADMOB` and ensure the installed plugin exposes the assemblies referenced by `Runtime/Providers/AdMob/SketchSdk.AdMob.asmdef`.
+1. **Package Manager > + > Add package from git URL**:
+   ```
+   https://github.com/CodeSketch-dev/sketch-sdk.git
+   ```
+   Pin a version for production: `https://github.com/CodeSketch-dev/sketch-sdk.git#v1.0.0`.
+2. The **Sketch SDK** window opens (menu **Sketch SDK > Settings**). If "Google Mobile Ads: missing", press **Install** (adds OpenUPM `com.google.ads.mobile`) or import the `.unitypackage` from [googleads-mobile-unity releases](https://github.com/googleads/googleads-mobile-unity/releases).
+3. Fill your AdMob ids (AdMob console > Apps):
+   - **App Id**: `ca-app-pub-XXXX~YYYY` (Android and iOS separately).
+   - **Ad unit ids** `ca-app-pub-XXXX/ZZZZ` for the formats you use. Leave a format blank to turn it off.
+4. Optional: **Sketch Server**: tick *Server Enabled*, fill *Server App Id* and *Server Api Key* (dashboard Admin > Apps).
+5. Press **Save & Verify**: writes the App Id into Google Mobile Ads settings, sets the define, lists anything missing.
+6. Android: *Player Settings > Publishing* enable *Custom Main Gradle Template* (+ properties/settings templates) and run *Assets > External Dependency Manager > Android Resolver > Force Resolve* once (standard Google Mobile Ads setup).
 
-The extracted provider source came from the Dig Egg project using Google Mobile Ads Unity plugin **11.6.0** (`GoogleMobileAds_version-11.6.0_manifest.txt`). It was not validated against a 9.3 plugin. No vendor DLLs or SDK files are copied here.
+That is all. The SDK starts by itself before the first scene (consent -> ads -> analytics -> remote config).
 
-## Bootstrap sketch
+The settings asset lives in your game at `Assets/SketchSdk/Resources/SketchSdkSettings.asset`. The package never contains ids or keys.
 
-Map values from a game-owned ScriptableObject into the plain runtime config. Keep consent and placement decisions in the game adapter.
+## 2. Use it in the game
 
 ```csharp
-var config = new SketchAdMobConfig
-{
-    RewardedId = rewardedIdForPlatform,
-    InterstitialId = interstitialIdForPlatform,
-    BannerId = bannerIdForPlatform,
-    AppOpenId = appOpenIdForPlatform,
-    NativeId = nativeIdForPlatform,
-    TestDeviceIds = testDeviceIds,
-    NonPersonalized = consentRequiresNonPersonalizedAds,
-};
+using Sketch.Sdk;
 
-// Keep interstitial spacing in the game policy layer; call ShowInterstitial only when its gate allows it.
-SketchSdk.Initialize(new SketchSdkAdMobProvider(config, gameAdsTelemetry), initialized =>
+// Interstitial at a natural break. onClosed ALWAYS runs once (ad or not), so continue the flow there.
+SketchAds.ShowInterstitial("level_end", () => LoadNextLevel());
+
+// Rewarded: granted == true only when the reward was earned.
+SketchAds.ShowRewarded("double_coins", granted =>
 {
-    // Continue the game's own startup flow.
+    if (granted) coins *= 2;
+    else ShowToast("No ad available, try again later");
 });
+bool canOfferReward = SketchAds.IsRewardedReady;   // enable/disable the reward button
+
+// Banner (sticky until hidden). Lift bottom UI by the real height:
+SketchAds.ShowBanner();
+SketchAds.BannerHeightChanged += px => bottomBar.anchoredPosition = new Vector2(0, px / canvas.scaleFactor);
+
+// Remove-ads purchase (persisted). Blocks banner, interstitial, app open, native. Rewarded stays.
+SketchAds.SetAdsRemoved(true);
+
+// Pause gameplay while a fullscreen ad is on screen (audio is paused for you).
+SketchAds.FullscreenAdChanged += showing => Time.timeScale = showing ? 0 : 1;
+
+// Analytics (Sketch Server + Firebase when present)
+SketchAnalytics.Log("level_complete", "level", 12, "time", 41.5f);
+
+// Remote config (server value, else the default typed in Settings)
+int lives = SketchRemoteConfig.GetInt("start_lives", 3);
+SketchRemoteConfig.Updated += ApplyConfig;
+
+// IAP: after the store confirmed the purchase (the SDK never grants items)
+SketchIap.ReportPurchaseStart("gems_100", "shop");      // on buy tap (also blocks the app-open ad on return)
+SketchIap.ReportPurchase(new SketchPurchase { ProductId = "gems_100", TransactionId = order.Id,
+    Price = 0.99, Currency = "USD", Store = "GooglePlay", Receipt = receipt });
+
+// Settings screen: Google requires a privacy button for EEA/UK users
+privacyButton.SetActive(SketchConsent.IsPrivacyOptionsRequired);
+privacyButton.onClick.AddListener(() => SketchConsent.ShowPrivacyOptions());
+
+// Rate us
+SketchRating.OpenStorePage();
 ```
 
-Configure Google Mobile Ads Android/iOS application IDs through the installed plugin's Editor settings and generated build metadata. `SketchAdMobConfig` accepts ad-unit IDs only; an application ID by itself does not make runtime initialization usable.
+Keep one game-side adapter (`AdsHelper`) as the only file that calls `SketchAds`; see the **Quick Start** sample (Package Manager > Sketch SDK > Samples), which also has a splash loader with cold-start app open and an on-device test panel.
 
-`gameAdsTelemetry` must implement the provider-neutral event contract. The `SketchSdkConfig` ScriptableObject and its `.meta` file stay in the game project; map its existing fields into `SketchAdMobConfig`, preserving the asset GUID and serialized field names during migration. Do not copy the asset into this package.
+### Splash and cold-start app open
 
-## Analytics and IAP staging
+`SketchSdkApp.WhenReady(...)` fires after consent + ads init (max ~10 s). The sample `SketchSplashLoader` waits for it and for remote config, calls `SketchAds.ShowColdStartAppOpen(4f, next)` (only shows when *App Open On Cold Start* is on), then loads scene 1.
 
-The package exposes `ISketchAdsTelemetry` and `ISketchIapTelemetry` but intentionally does not reference Bounce or `Sketch.Analytics`. Add consumer-side adapters in the game that owns those dependencies. Ad lifecycle events can map to `Sketch.Analytics.AnalyticsClient.Track`. The server SDK's `TrackAdRevenue` contract labels its amount `RevenueUsd`, while AdMob provides `ValueMicros` and a currency code; preserve both raw values through `Track` unless a verified conversion is available. Do not silently treat a non-USD amount as USD or emit duplicate revenue events.
+## 3. Ad pacing and remote config keys
 
-After a successful store transaction, the game may map `SketchIapCapture` to the server SDK's `IapCapture` and call `AnalyticsClient.CaptureIap`. That is capture/receipt submission only: entitlement decisions remain in the store/game flow and server-side receipt verification. Implement and verify the server and Bounce adapters, consent-denied behavior, deduplication, IAP capture and paid-event mapping as a separate consumer integration stage. This package does not claim those integrations are finished.
+Defaults (Bounce values) are in Settings > Pacing. Override any of them per A/B variant from the Sketch dashboard config:
 
-## Verification
+| Key | Type | Meaning |
+|---|---|---|
+| `sketch_inter_start_delay` | seconds | no interstitial until this long after install (default 60) |
+| `sketch_inter_cooldown` | seconds | gap after any fullscreen ad (default 60) |
+| `sketch_inter_min_session` | int | first session allowed to show interstitials |
+| `sketch_banner_start_delay` | seconds | banner hidden until this long after install |
+| `sketch_app_open_resume` | bool | app open when returning from background |
+| `sketch_app_open_cold_start` | bool | app open at launch (splash) |
+| `sketch_app_open_start_delay` | seconds | no app open until this long after install |
+| `sketch_app_open_min_background` | seconds | minimum time in background before resume app open |
+| `sketch_app_open_after_fullscreen` | seconds | no app open this soon after another fullscreen ad (default 30) |
+| `sketch_ads_placements` | JSON array | `[{"placement":"level_end","enabled":true,"min_session":2,"cooldown":45}]` |
 
-Run the package's dependency-free core checks with:
+`SketchAds.ShowInterstitial(placement, onClosed, skipCooldown: true)` ignores only the cooldown. `SketchAds.Policy.LastBlockReason` tells why an ad was skipped.
 
-```powershell
-dotnet run --project Tests~/SketchSdk.Policy.Tests/SketchSdk.Policy.Tests.csproj
+## 4. Events sent automatically
+
+`sketch_session_start`, `sketch_ads_init`, `sketch_remote_config`, `consent_result`, `ad_loaded`, `ad_load_failed`, `ad_impression`, `ad_clicked`, `ad_opened`, `ad_closed`, `ad_show_failed` (each with `format`, `placement`), `ad_not_ready`, `ad_reward_granted`, `ad_reward_skipped`, `iap_start`, `iap_success`, `iap_failed`, `ads_removed`, `reach_rev_<x>` (lifetime revenue milestones in USD, set in Settings). Ad revenue goes to `POST /revenue/ads` per paid impression, IAP to `POST /revenue/iap`. Keep the AdMob account currency in USD: for another currency the SDK sends `revenueUsd: 0` with the local value in `metadata.local_value` / `local_currency` (no guessed exchange rate).
+
+## 5. Testing
+
+- **Editor Play Mode:** fake provider; every format is ready and rewarded grants. `SketchEditorFakeProvider.SimulateNoFill` / `SimulateRewardSkipped` exercise the failure paths.
+- **Development builds:** Google test ad units are used automatically (*Test Ads In Development Build*). Add your device's hashed id (printed in logcat) to *Test Device Ids* for real units on your phone.
+- **Consent:** *Consent Debug Geography = EEA* in a development build shows the form outside Europe; `SketchConsent.ResetForTesting()` clears it.
+- **Release check:** building Android/iOS without Development fails when the App Id is missing or an id is malformed.
+
+Package tests (add `"testables": ["com.sketch.sdk"]` to the project manifest): 8 EditMode + 8 PlayMode. Pure-logic harness: `dotnet run --project Tests~/SketchSdk.Policy.Tests/SketchSdk.Policy.Tests.csproj`.
+
+## Architecture
+
+```
+Game (decides WHEN)  ->  AdsHelper (game adapter, only SDK caller)  ->  SketchAds / SketchAnalytics / SketchRemoteConfig (facades)
+                                                                        -> SketchAdsPolicy (pure pacing rules)
+                                                                        -> SketchSdk (provider facade: once-only callbacks, fullscreen lock)
+                                                                        -> ISketchAdsProvider: SketchSdkAdMobProvider | SketchEditorFakeProvider
+SketchSdkApp bootstrap: identity -> analytics sinks (SketchServerClient, Firebase) -> remote config -> UMP consent -> ads
 ```
 
-The test harness links core C# sources and tiny Unity API stubs; it does not prove Unity import, actual editor compilation, native plugin linkage, AdMob behavior, consent, or device callbacks. Those gates require a Unity consumer project with the documented Google Mobile Ads plugin and real-device checks.
+Assemblies: `SketchSdk.Runtime` (core, no dependencies), `SketchSdk.AdMob` (needs `SKETCHSDK_ADMOB`, set automatically), `SketchSdk.Firebase` (auto when `com.google.firebase.analytics` is installed), `SketchSdk.Editor`.
+
+No runtime manager GameObject is created: the SDK ticks through a PlayerLoop system.
+
+## Before you publish
+
+- Real ids in Settings, *Force Test Ads* off, build without Development.
+- AdMob: app-ads.txt on your developer website, Privacy & messaging GDPR message published (the UMP form is configured there).
+- Play Console: Data safety form declares advertising id + analytics. The Google Mobile Ads plugin adds the `AD_ID` permission.
+- Test on a real device: consent form, rewarded grant, interstitial close, app open on resume, banner layout.

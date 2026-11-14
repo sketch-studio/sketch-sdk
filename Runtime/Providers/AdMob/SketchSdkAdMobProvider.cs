@@ -31,8 +31,6 @@ namespace Sketch.Sdk
         bool _initialized;
         bool _rewardEarned;
         Action<bool> _rewardCallback;
-        Action _interstitialCallback;
-        Action _appOpenCallback;
         SketchNativeCallbacks _nativeCallbacks;
         bool _bannerRequested;
         bool _bannerLoaded;
@@ -83,6 +81,9 @@ namespace Sketch.Sdk
             }
 
             _initStarted = true;
+            // Every GMA ad event (closed, reward, paid, load) is raised on the Unity main thread, so callbacks may touch Unity APIs.
+            MobileAds.RaiseAdEventsOnUnityMainThread = true;
+            MobileAds.SetiOSAppPauseOnBackground(true);
             ApplyRequestConfiguration();
             Debug.Log("[SketchAds] Starting Google Mobile Ads initialization.");
             MobileAds.Initialize(status =>
@@ -96,6 +97,8 @@ namespace Sketch.Sdk
                 }
 
                 LoadConfiguredAds();
+                SketchSdkLoop.Update -= TickReloads;
+                SketchSdkLoop.Update += TickReloads;
                 onInitialized?.Invoke(true);
             });
         }
@@ -176,14 +179,20 @@ namespace Sketch.Sdk
             if (!IsReady(SketchAdFormat.Rewarded)) { onComplete?.Invoke(false); return; }
             _rewardCallback = onComplete;
             _rewardEarned = false;
+            _rewardClosePending = false;
             var ad = _rewarded;
             _rewarded = null;
+            _showingRewarded = ad;
             try
             {
                 ad.OnAdFullScreenContentClosed += CompleteRewarded;
                 ad.OnAdFullScreenContentFailed += _ => CompleteRewarded();
                 SketchSdk.ReportFullscreen(true);
-                ad.Show(_ => _rewardEarned = true);
+                ad.Show(_ =>
+                {
+                    _rewardEarned = true;
+                    if (_rewardClosePending) FinishRewarded();
+                });
             }
             catch (Exception e)
             {
@@ -195,40 +204,66 @@ namespace Sketch.Sdk
         public void ShowInterstitial(Action onClosed)
         {
             if (!IsReady(SketchAdFormat.Interstitial)) { onClosed?.Invoke(); return; }
-            _interstitialCallback = onClosed;
             var ad = _interstitial;
             _interstitial = null;
+            bool done = false;
+            // Per-show completion: closed and failed (or a throw) can all arrive; only the first counts, then the spent ad is destroyed.
+            void Complete()
+            {
+                if (done) return;
+                done = true;
+                SketchSdk.ReportFullscreen(false);
+                try { onClosed?.Invoke(); }
+                finally
+                {
+                    SafeDestroy(ad);
+                    LoadInterstitial();
+                }
+            }
             try
             {
-                ad.OnAdFullScreenContentClosed += CompleteInterstitial;
-                ad.OnAdFullScreenContentFailed += _ => CompleteInterstitial();
+                ad.OnAdFullScreenContentClosed += Complete;
+                ad.OnAdFullScreenContentFailed += _ => Complete();
                 SketchSdk.ReportFullscreen(true);
                 ad.Show();
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"[SketchAds] Interstitial show failed: {e.Message}");
-                CompleteInterstitial();
+                Complete();
             }
         }
 
         public void ShowAppOpen(Action onClosed)
         {
             if (!IsReady(SketchAdFormat.AppOpen)) { onClosed?.Invoke(); return; }
-            _appOpenCallback = onClosed;
             var ad = _appOpen;
             _appOpen = null;
+            bool done = false;
+            void Complete()
+            {
+                if (done) return;
+                done = true;
+                SketchSdk.ReportFullscreen(false);
+                try { onClosed?.Invoke(); }
+                finally
+                {
+                    SafeDestroy(ad);
+                    _nextAppOpenLoadAt = 0;
+                    if (SketchAdMobConfig.IsUsableId(_config.AppOpenId)) LoadAppOpen();
+                }
+            }
             try
             {
-                ad.OnAdFullScreenContentClosed += CompleteAppOpen;
-                ad.OnAdFullScreenContentFailed += _ => CompleteAppOpen();
+                ad.OnAdFullScreenContentClosed += Complete;
+                ad.OnAdFullScreenContentFailed += _ => Complete();
                 SketchSdk.ReportFullscreen(true);
                 ad.Show();
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"[SketchAds] App-open show failed: {e.Message}");
-                CompleteAppOpen();
+                Complete();
             }
         }
 
@@ -500,12 +535,43 @@ namespace Sketch.Sdk
             if (SketchAdMobConfig.IsUsableId(_config.NativeId)) LoadNative();
         }
 
+        // ---- reload with linear back-off (5 s x attempt, max 60 s) so a failed load never leaves a format dead ----
+        bool _rewardedLoading, _interstitialLoading;
+        int _rewardedAttempts, _interstitialAttempts, _bannerAttempts;
+        double _rewardedRetryAt = double.MaxValue, _interstitialRetryAt = double.MaxValue, _bannerRetryAt = double.MaxValue;
+        static double Backoff(int attempts) => Math.Min(60.0, 5.0 * Math.Max(1, attempts));
+
+        void TickReloads()
+        {
+            double now = Now;
+            if (_rewarded == null && !_rewardedLoading && now >= _rewardedRetryAt) LoadRewarded();
+            if (_interstitial == null && !_interstitialLoading && now >= _interstitialRetryAt) LoadInterstitial();
+            if (_banner != null && !_bannerLoaded && now >= _bannerRetryAt)
+            {
+                _bannerRetryAt = double.MaxValue;
+                try { _banner.LoadAd(NewRequest()); } catch (Exception e) { Debug.LogWarning($"[SketchAds] Banner reload threw: {e.Message}"); }
+            }
+        }
+
         void LoadRewarded()
         {
+            if (_rewardedLoading) return;
+            _rewardedLoading = true;
+            _rewardedRetryAt = double.MaxValue;
             _rewarded?.Destroy();
+            _rewarded = null;
             RewardedAd.Load(_config.RewardedId, NewRequest(), (ad, error) =>
             {
-                if (error != null || ad == null) { Debug.LogWarning($"[SketchAds] Rewarded load failed: {error}"); LogLoadFailed("rewarded", _config.RewardedId, error); return; }
+                _rewardedLoading = false;
+                if (error != null || ad == null)
+                {
+                    _rewardedAttempts++;
+                    _rewardedRetryAt = Now + Backoff(_rewardedAttempts);
+                    Debug.LogWarning($"[SketchAds] Rewarded load failed (retry in {Backoff(_rewardedAttempts)}s): {error}");
+                    LogLoadFailed("rewarded", _config.RewardedId, error);
+                    return;
+                }
+                _rewardedAttempts = 0;
                 _rewarded = ad;
                 HookPaid(ad, "rewarded");
                 HookLife(ad, "rewarded", _config.RewardedId);
@@ -516,10 +582,23 @@ namespace Sketch.Sdk
 
         void LoadInterstitial()
         {
+            if (_interstitialLoading) return;
+            _interstitialLoading = true;
+            _interstitialRetryAt = double.MaxValue;
             _interstitial?.Destroy();
+            _interstitial = null;
             InterstitialAd.Load(_config.InterstitialId, NewRequest(), (ad, error) =>
             {
-                if (error != null || ad == null) { Debug.LogWarning($"[SketchAds] Interstitial load failed: {error}"); LogLoadFailed("interstitial", _config.InterstitialId, error); return; }
+                _interstitialLoading = false;
+                if (error != null || ad == null)
+                {
+                    _interstitialAttempts++;
+                    _interstitialRetryAt = Now + Backoff(_interstitialAttempts);
+                    Debug.LogWarning($"[SketchAds] Interstitial load failed (retry in {Backoff(_interstitialAttempts)}s): {error}");
+                    LogLoadFailed("interstitial", _config.InterstitialId, error);
+                    return;
+                }
+                _interstitialAttempts = 0;
                 _interstitial = ad;
                 HookPaid(ad, "interstitial");
                 HookLife(ad, "interstitial", _config.InterstitialId);
@@ -575,6 +654,8 @@ namespace Sketch.Sdk
             {
                 if (!IsCurrent()) return;
                 _bannerLoaded = true;
+                _bannerAttempts = 0;
+                _bannerRetryAt = double.MaxValue;
                 _bannerHeightPixels = banner.GetHeightInPixels();
                 PublishBannerLayout();
                 LogLoaded("banner", _config.BannerId, SafeInfo(() => banner.GetResponseInfo()));
@@ -584,6 +665,8 @@ namespace Sketch.Sdk
                 if (!IsCurrent()) return;
                 _bannerLoaded = false;
                 _bannerHeightPixels = 0f;
+                _bannerAttempts++;
+                _bannerRetryAt = Now + Backoff(_bannerAttempts);
                 PublishBannerLayout();
                 LogLoadFailed("banner", _config.BannerId, error);
             });
@@ -604,33 +687,53 @@ namespace Sketch.Sdk
             BannerLayoutChanged?.Invoke(height);
         }
 
+        // Some networks deliver "closed" before "earned reward": wait briefly for a late reward before reporting false.
+        bool _rewardClosePending;
+        double _rewardCloseDeadline;
+        const double LATE_REWARD_GRACE = 1.0;
+
         void CompleteRewarded()
         {
+            if (_rewardCallback == null || _rewardClosePending) return;
+            if (_rewardEarned) { FinishRewarded(); return; }
+            _rewardClosePending = true;
+            _rewardCloseDeadline = Now + LATE_REWARD_GRACE;
+            SketchSdkLoop.Update -= WaitLateReward;
+            SketchSdkLoop.Update += WaitLateReward;
+        }
+
+        void WaitLateReward()
+        {
+            if (!_rewardClosePending) { SketchSdkLoop.Update -= WaitLateReward; return; }
+            if (Now >= _rewardCloseDeadline) FinishRewarded();
+        }
+
+        void FinishRewarded()
+        {
+            SketchSdkLoop.Update -= WaitLateReward;
+            _rewardClosePending = false;
             SketchSdk.ReportFullscreen(false);
             var callback = _rewardCallback;
             _rewardCallback = null;
-            callback?.Invoke(_rewardEarned);
-            LoadRewarded();
+            var spent = _showingRewarded;
+            _showingRewarded = null;
+            try { callback?.Invoke(_rewardEarned); }
+            finally
+            {
+                SafeDestroy(spent);
+                LoadRewarded();
+            }
         }
 
-        void CompleteInterstitial()
-        {
-            SketchSdk.ReportFullscreen(false);
-            var callback = _interstitialCallback;
-            _interstitialCallback = null;
-            callback?.Invoke();
-            LoadInterstitial();
-        }
+        RewardedAd _showingRewarded;
 
-        void CompleteAppOpen()
-        {
-            SketchSdk.ReportFullscreen(false);
-            var callback = _appOpenCallback;
-            _appOpenCallback = null;
-            callback?.Invoke();
-            _nextAppOpenLoadAt = 0;
-            if (SketchAdMobConfig.IsUsableId(_config.AppOpenId)) LoadAppOpen();
-        }
+        static void SafeDestroy(RewardedAd ad) { try { ad?.Destroy(); } catch (Exception e) { Debug.LogWarning("[SketchAds] Destroy failed: " + e.Message); } }
+        static void SafeDestroy(InterstitialAd ad) { try { ad?.Destroy(); } catch (Exception e) { Debug.LogWarning("[SketchAds] Destroy failed: " + e.Message); } }
+        static void SafeDestroy(AppOpenAd ad) { try { ad?.Destroy(); } catch (Exception e) { Debug.LogWarning("[SketchAds] Destroy failed: " + e.Message); } }
+
+
+
+
     }
 }
 #endif

@@ -1,0 +1,27 @@
+{
+  "name": "SketchSdk.Firebase",
+  "rootNamespace": "Sketch.Sdk",
+  "references": [
+    "SketchSdk.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Firebase.App.dll",
+    "Firebase.Analytics.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "SKETCHSDK_FIREBASE"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.google.firebase.analytics",
+      "expression": "11.0.0",
+      "define": "SKETCHSDK_FIREBASE"
+    }
+  ],
+  "noEngineReferences": false
+}

@@ -3,7 +3,9 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="UnityEngineStubs.cs" />
-    <Compile Include="../../Runtime/Ads/**/*.cs" />
-    <Compile Include="../../Samples~/ConsumerAdapter/SketchInterstitialPacing.cs" />
+    <Compile Include="../../Runtime/Ads/**/*.cs" Exclude="../../Runtime/Ads/SketchAds.cs;../../Runtime/Ads/SketchAdsTelemetryRouter.cs;../../Runtime/Ads/SketchEditorFakeProvider.cs" />
+    <Compile Include="../../Runtime/Core/SketchJson.cs" />
+    <Compile Include="../../Runtime/Core/SketchConfigValues.cs" />
+    <Compile Include="../../Runtime/Telemetry/*.cs" />
   </ItemGroup>
 </Project>

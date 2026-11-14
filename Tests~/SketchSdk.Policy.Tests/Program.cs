@@ -1,5 +1,4 @@
 using Sketch.Sdk;
-using Sketch.Sdk.Samples;
 using System.Reflection;
 
 int assertions = 0;
@@ -9,10 +8,29 @@ void Check(bool condition, string message)
     if (!condition) throw new Exception(message);
 }
 
-Check(SketchInterstitialPacing.Allowed(5, double.NegativeInfinity, 30), "first show should pass");
-Check(!SketchInterstitialPacing.Allowed(129.9, 100, 30), "interval boundary must block");
-Check(SketchInterstitialPacing.Allowed(130, 100, 30), "interval boundary must pass");
-Check(SketchInterstitialPacing.Allowed(100, 100, 0), "zero interval should pass");
+var pol = new SketchAdsPolicy(new SketchAdsPolicySettings { InterstitialStartDelaySeconds = 60, InterstitialCooldownSeconds = 60, InterstitialMinSession = 1, AppOpenOnResume = true, AppOpenMinBackgroundSeconds = 3, AppOpenAfterFullscreenSeconds = 30 }, 1000);
+Check(!pol.CanShowInterstitial("p", 1059.9) && pol.LastBlockReason == "start_delay", "policy: start delay since first open blocks");
+Check(pol.CanShowInterstitial("p", 1060), "policy: start delay boundary passes");
+pol.OnFullscreenClosed(1060);
+Check(!pol.CanShowInterstitial("p", 1119.9) && pol.LastBlockReason == "cooldown", "policy: cooldown after any fullscreen");
+Check(pol.CanShowInterstitial("p", 1120), "policy: cooldown boundary passes");
+Check(pol.CanShowInterstitial("p", 1061, skipCooldown: true), "policy: skipCooldown ignores only the cooldown");
+Check(!pol.CanShowAppOpen(1080, false, 60) && pol.LastBlockReason == "after_fullscreen", "policy: app-open blocked within 30 s of a fullscreen ad");
+Check(!pol.CanShowAppOpen(1200, false, 2) && pol.LastBlockReason == "short_background", "policy: short background blocks app-open");
+Check(pol.CanShowAppOpen(1200, false, 5), "policy: resume app-open passes");
+Check(!pol.CanShowAppOpen(1200, true, 0) && pol.LastBlockReason == "app_open_disabled", "policy: cold start off by default");
+pol.Session = 1;
+pol.Settings.InterstitialMinSession = 2;
+Check(!pol.CanShowInterstitial("p", 5000) && pol.LastBlockReason == "session_gate", "policy: session gate");
+pol.Settings.InterstitialMinSession = 1;
+pol.AdsRemoved = true;
+Check(!pol.CanShowInterstitial("p", 9000) && !pol.CanShowBanner(9000) && !pol.CanShowAppOpen(9000, false, 60), "policy: remove-ads blocks inter, banner, app-open");
+pol.AdsRemoved = false;
+var cfg = new SketchConfigValues();
+cfg.SetRemote(new Dictionary<string, object> { [SketchAdsRemoteKeys.INTER_COOLDOWN] = "15" }, "Default");
+Check(SketchAdsRemoteKeys.Apply(pol.Settings, cfg).InterstitialCooldownSeconds == 15f, "remote key string value overrides cooldown");
+Check(SketchJson.Serialize(SketchJson.Parse("{\"a\":[1,true,\"x\"]}")) == "{\"a\":[1,true,\"x\"]}", "json round trip");
+
 Check(SketchAdMobConfig.IsUsableId("ca-app-pub-3940256099942544/5224354917"), "Google test unit ids remain usable");
 Check(!SketchAdMobConfig.IsUsableId(" "), "empty ids are rejected");
 

@@ -110,25 +110,44 @@ namespace Sketch.Sdk
             _fullscreenReserved = false;
         }
 
+        // Completion of the fullscreen ad in progress; used by the watchdog when a provider never reports "closed".
+        static Action _abortFullscreen;
+
+        /// <summary>Completes the fullscreen ad in progress as closed (rewarded: not granted). Returns false when none is pending.</summary>
+        internal static bool ForceCloseFullscreen()
+        {
+            Action abort = _abortFullscreen;
+            if (abort == null) return false;
+            Debug.LogWarning("[SketchAds] Fullscreen ad never reported closed; completing it (watchdog).");
+            abort();
+            FullscreenAdShowing = false;
+            _fullscreenClosedAt = Time.realtimeSinceStartupAsDouble;
+            return true;
+        }
+
         static bool TryShowFullscreen(Action<Action> show, Action onClosed)
         {
             bool completed = false;
             if (!TryReserveFullscreen()) return false;
+            void Complete()
+            {
+                if (completed) return;
+                completed = true;
+                _abortFullscreen = null;
+                ReleaseFullscreen();
+                onClosed?.Invoke();
+            }
+            _abortFullscreen = Complete;
             try
             {
-                show(() =>
-                {
-                    if (completed) return;
-                    completed = true;
-                    ReleaseFullscreen();
-                    onClosed?.Invoke();
-                });
+                show(Complete);
                 return true;
             }
             catch (Exception e)
             {
                 if (completed) throw;
                 completed = true;
+                _abortFullscreen = null;
                 ReleaseFullscreen();
                 Debug.LogWarning("[SketchAds] Fullscreen show failed: " + e.Message);
                 return false;
@@ -139,21 +158,25 @@ namespace Sketch.Sdk
         {
             if (!IsReady(SketchAdFormat.Rewarded) || !TryReserveFullscreen()) return false;
             bool completed = false;
+            void Complete(bool ok)
+            {
+                if (completed) return;
+                completed = true;
+                _abortFullscreen = null;
+                ReleaseFullscreen();
+                onComplete?.Invoke(ok);
+            }
+            _abortFullscreen = () => Complete(false);
             try
             {
-                _provider.ShowRewarded(ok =>
-                {
-                    if (completed) return;
-                    completed = true;
-                    ReleaseFullscreen();
-                    onComplete?.Invoke(ok);
-                });
+                _provider.ShowRewarded(Complete);
                 return true;
             }
             catch (Exception e)
             {
                 if (completed) throw;
                 completed = true;
+                _abortFullscreen = null;
                 ReleaseFullscreen();
                 Debug.LogWarning("[SketchAds] Rewarded show failed: " + e.Message);
                 return false;
@@ -368,6 +391,7 @@ namespace Sketch.Sdk
             BannerLayoutChanged = null;
             FullscreenAdShowing = false;
             _fullscreenReserved = false;
+            _abortFullscreen = null;
             _fullscreenClosedAt = double.NegativeInfinity;
             NativeAttachTimeoutSeconds = 0f;
             ClearNativeState();
