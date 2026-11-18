@@ -1,8 +1,8 @@
 {
   "name": "com.sketch.sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Sketch SDK",
-  "description": "One-package mobile monetization SDK: AdMob ads (banner, interstitial, rewarded, app open, native) with pacing, Google UMP consent, Sketch Server analytics + remote config + ad/IAP revenue. Fill Sketch SDK > Settings and call SketchAds.",
+  "description": "Mobile monetization SDK with ads, consent, analytics, remote config, notifications, push contracts, cross-promotion and revenue telemetry.",
   "unity": "2021.3",
   "author": {
     "name": "Sketch"
