@@ -4,6 +4,23 @@ using UnityEngine;
 
 namespace Sketch.Sdk
 {
+    public interface ISketchNotificationsProvider
+    {
+        void Initialize(Action<bool> onInitialized);
+        bool Schedule(SketchNotificationRequest request);
+        bool Cancel(string id);
+        void CancelAll();
+        void ResetOnLaunch();
+    }
+
+    public interface ISketchPushProvider
+    {
+        void Initialize(Action<bool> onInitialized);
+        void RequestPermission(Action<bool> onGranted);
+        void GetToken(Action<string> onToken);
+        void DeleteToken(Action<bool> onDeleted);
+    }
+
     /// <summary>
     /// Optional assemblies (AdMob, Firebase...) register their factories here from
     /// [RuntimeInitializeOnLoadMethod(AfterAssembliesLoaded)], before SketchSdkApp boots at BeforeSceneLoad.
