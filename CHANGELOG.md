@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 - 2026-11-19
+
+- Added Unity metadata for packaged documentation assets so immutable Git package imports stay Console-clean.
+
 ## 1.2.0 - 2026-11-19
 
 - Rebuilt the Sketch SDK Settings window with Unity UI Toolkit for a cleaner responsive editor workflow.
