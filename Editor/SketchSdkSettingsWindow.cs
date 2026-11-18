@@ -4,19 +4,21 @@ using UnityEngine;
 
 namespace Sketch.Sdk.Editor
 {
-    /// <summary>Menu Sketch SDK > Settings: one page to fill AdMob ids, pacing, consent and the Sketch Server key.</summary>
+    /// <summary>Bilingual Sketch SDK control centre for configuration, diagnostics and documentation.</summary>
     public sealed class SketchSdkSettingsWindow : EditorWindow
     {
         SketchSdkSettings _settings;
         UnityEditor.Editor _inspector;
         Vector2 _scroll;
         string _status = string.Empty;
+        bool _vietnamese;
+        GUIStyle _title, _subtitle, _card, _muted;
 
         [MenuItem("Sketch SDK/Settings", priority = 0)]
         public static void Open()
         {
             var window = GetWindow<SketchSdkSettingsWindow>("Sketch SDK");
-            window.minSize = new Vector2(440, 520);
+            window.minSize = new Vector2(560, 680);
             window.Show();
         }
 
@@ -32,9 +34,16 @@ namespace Sketch.Sdk.Editor
         static void InstallGma() => SketchGmaInstaller.Install();
 
         [MenuItem("Sketch SDK/Documentation", priority = 40)]
-        static void OpenDocs() => Application.OpenURL("https://github.com/CodeSketch-dev/sketch-sdk#readme");
+        static void OpenDocs() => Application.OpenURL("https://github.com/sketch-studio/sketch-sdk#documentation");
 
-        void OnEnable() => _settings = SketchSdkEditorUtil.FindOrCreateSettings();
+        void OnEnable()
+        {
+            _settings = SketchSdkEditorUtil.FindOrCreateSettings();
+            _title = new GUIStyle(EditorStyles.boldLabel) { fontSize = 22 };
+            _subtitle = new GUIStyle(EditorStyles.label) { wordWrap = true, normal = { textColor = new Color(.62f, .66f, .72f) } };
+            _card = new GUIStyle("HelpBox") { padding = new RectOffset(12, 12, 10, 10) };
+            _muted = new GUIStyle(EditorStyles.miniLabel) { normal = { textColor = new Color(.58f, .62f, .68f) } };
+        }
 
         void OnDisable()
         {
@@ -44,9 +53,22 @@ namespace Sketch.Sdk.Editor
         void OnGUI()
         {
             if (_settings == null) _settings = SketchSdkEditorUtil.FindOrCreateSettings();
-            EditorGUILayout.LabelField("Sketch SDK " + SketchSdkVersion.VERSION, EditorStyles.boldLabel);
-            EditorGUILayout.LabelField(AssetDatabase.GetAssetPath(_settings), EditorStyles.miniLabel);
+            if (_title == null) OnEnable();
+            using (new EditorGUILayout.VerticalScope(_card))
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField("SKETCH SDK", _title);
+                    GUILayout.FlexibleSpace();
+                    _vietnamese = GUILayout.Toggle(_vietnamese, "Tiếng Việt", "Button", GUILayout.Width(100));
+                }
+                EditorGUILayout.LabelField(_vietnamese
+                    ? "Monetization mobile, quyền riêng tư, analytics và remote config trong một lớp dễ bảo trì."
+                    : "Mobile monetization, privacy, analytics and remote configuration in one maintainable layer.", _subtitle);
+                EditorGUILayout.LabelField("v" + SketchSdkVersion.VERSION + "  •  " + AssetDatabase.GetAssetPath(_settings), _muted);
+            }
 
+            EditorGUILayout.LabelField(_vietnamese ? "Trạng thái hệ thống" : "System status", EditorStyles.boldLabel);
             DrawStatus();
             EditorGUILayout.Space(6);
 
@@ -60,8 +82,9 @@ namespace Sketch.Sdk.Editor
             EditorGUILayout.Space(6);
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Save & Verify", GUILayout.Height(28))) SaveAndVerify();
-                if (GUILayout.Button("Select Asset", GUILayout.Height(28))) SelectAsset();
+                if (GUILayout.Button(_vietnamese ? "Lưu & kiểm tra" : "Save & Verify", GUILayout.Height(32))) SaveAndVerify();
+                if (GUILayout.Button(_vietnamese ? "Chọn asset" : "Select Asset", GUILayout.Height(32))) SelectAsset();
+                if (GUILayout.Button(_vietnamese ? "Mở tài liệu" : "Open docs", GUILayout.Height(32))) OpenDocs();
             }
             if (!string.IsNullOrEmpty(_status)) EditorGUILayout.HelpBox(_status, MessageType.None);
         }
@@ -71,15 +94,30 @@ namespace Sketch.Sdk.Editor
             bool gma = SketchSdkEditorUtil.IsGoogleMobileAdsInstalled;
             using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.LabelField("Google Mobile Ads", gma ? "installed" : "missing", GUILayout.ExpandWidth(true));
-                if (!gma && GUILayout.Button("Install", GUILayout.Width(80))) SketchGmaInstaller.Install();
+                DrawStatusCard("Google Mobile Ads", gma);
+                if (!gma && GUILayout.Button(_vietnamese ? "Cài đặt" : "Install", GUILayout.Width(80))) SketchGmaInstaller.Install();
             }
-            EditorGUILayout.LabelField(SketchSdkEditorUtil.ADMOB_DEFINE, SketchSdkEditorUtil.AdMobDefineActive ? "on (Android, iOS)" : "off");
-            EditorGUILayout.LabelField("Firebase Analytics", SketchSdkEditorUtil.IsFirebaseAnalyticsInstalled ? "installed (events forwarded)" : "not installed (optional)");
-            EditorGUILayout.LabelField("Sketch Server", _settings.HasServerCredentials ? "configured" : _settings.ServerEnabled ? "incomplete" : "off");
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                DrawStatusCard("Firebase Analytics", SketchSdkEditorUtil.IsFirebaseAnalyticsInstalled);
+                DrawStatusCard("Sketch Server", _settings.HasServerCredentials);
+                DrawStatusCard(SketchSdkEditorUtil.ADMOB_DEFINE, SketchSdkEditorUtil.AdMobDefineActive);
+            }
 
             List<SketchSdkEditorUtil.Issue> issues = SketchSdkEditorUtil.Validate(_settings, forRelease: false);
             foreach (var issue in issues) EditorGUILayout.HelpBox(issue.Text, issue.Type);
+        }
+
+        void DrawStatusCard(string label, bool ready)
+        {
+            using (new EditorGUILayout.VerticalScope(_card, GUILayout.MinHeight(48)))
+            {
+                Color old = GUI.color;
+                GUI.color = ready ? new Color(.35f, .82f, .48f) : new Color(.95f, .62f, .28f);
+                EditorGUILayout.LabelField(ready ? "● READY" : "● SETUP", EditorStyles.boldLabel);
+                GUI.color = old;
+                EditorGUILayout.LabelField(label, EditorStyles.miniLabel);
+            }
         }
 
         void SaveAndVerify()

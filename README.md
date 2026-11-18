@@ -1,5 +1,7 @@
 # Sketch SDK
 
+> **Documentation / Tài liệu:** open the [bilingual product site](docs/index.html) for the complete feature map, architecture, API entry points and integration flow.
+
 One Unity package for mobile monetization, modeled on Bounce SDK but **AdMob only** (no AppLovin MAX):
 
 - **Ads (Google AdMob):** banner, interstitial, rewarded, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
