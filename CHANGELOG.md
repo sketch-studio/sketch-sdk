@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 - 2026-11-19
+
+- Rebuilt the Sketch SDK Settings window with Unity UI Toolkit for a cleaner responsive editor workflow.
+- Preserved the existing settings inspector, bilingual toggle, status cards, Save & Verify, asset selection and documentation actions.
+
 ## 1.0.0 - 2026-11-15
 
 Full "Bounce-like" SDK, AdMob only.
