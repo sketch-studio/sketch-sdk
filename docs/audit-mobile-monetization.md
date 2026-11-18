@@ -58,4 +58,4 @@ pm test, Vitest 5.0.5).
 
 The Unity Asset Store feature inventory confirms the package also advertises local push notifications, remote push/FCM, Android in-app update, rating, ATT, connectivity checker, Firebase Analytics and multiple mediation adapters. The previous matrix was incomplete and must not be treated as 100% parity. Source: https://assetstore.unity.com/packages/tools/integration/mobile-monetization-pro-v2-ads-iap-in-app-purchase-more-android--309617
 
-Implemented in this follow-up: provider-neutral local notification request/facade contracts under Runtime/Notifications. Remaining modules stay OPEN until implemented and tested: remote push/FCM, in-app update, rating, ATT, connectivity, and platform adapters.
+Notification contracts were prototyped but are currently held OPEN because the Unity Git package cache omitted the new source files during import. No notification parity claim is made until a fresh package import compiles them. Remaining modules stay OPEN until implemented and tested: local/remote push, in-app update, rating, ATT, connectivity, and platform adapters.
