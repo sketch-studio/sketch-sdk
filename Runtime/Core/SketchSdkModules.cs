@@ -13,6 +13,7 @@ namespace Sketch.Sdk
         public static Func<SketchSdkSettings, ISketchAdsTelemetry, ISketchAdsProvider> AdsProviderFactory { get; set; }
         public static Func<SketchSdkSettings, ISketchConsentProvider> ConsentProviderFactory { get; set; }
         public static Func<SketchSdkSettings, ISketchNotificationsProvider> NotificationsProviderFactory { get; set; }
+        public static Func<SketchSdkSettings, ISketchPushProvider> PushProviderFactory { get; set; }
         static readonly List<Func<SketchSdkSettings, ISketchAnalyticsSink>> SinkFactories = new List<Func<SketchSdkSettings, ISketchAnalyticsSink>>();
 
         public static IReadOnlyList<Func<SketchSdkSettings, ISketchAnalyticsSink>> AnalyticsSinkFactories => SinkFactories;
@@ -28,6 +29,7 @@ namespace Sketch.Sdk
             AdsProviderFactory = null;
             ConsentProviderFactory = null;
             NotificationsProviderFactory = null;
+            PushProviderFactory = null;
             SinkFactories.Clear();
         }
     }
