@@ -82,6 +82,9 @@ Keep one game-side adapter (`AdsHelper`) as the only file that calls `SketchAds`
 
 `SketchSdkApp.WhenReady(...)` fires after consent + ads init (max ~10 s). The sample `SketchSplashLoader` waits for it and for remote config, calls `SketchAds.ShowColdStartAppOpen(4f, next)` (only shows when *App Open On Cold Start* is on), then loads scene 1.
 
+## Cross-promotion
+
+Cross-promotion is provider-neutral and driven by the existing Sketch Server remote-config payload. A game supplies an `ISketchCrossPromoCatalog` and a DataBlock-backed `ISketchCrossPromoState` to `SketchCrossPromo`. The SDK rotates valid HTTPS store links by session/open thresholds and emits `cross_promo_impression` and `cross_promo_click`; it never owns wallet, entitlement, persistence, UI, or global time scale.
 ## 3. Ad pacing and remote config keys
 
 Defaults (Bounce values) are in Settings > Pacing. Override any of them per A/B variant from the Sketch dashboard config:
@@ -134,3 +137,4 @@ No runtime manager GameObject is created: the SDK ticks through a PlayerLoop sys
 - AdMob: app-ads.txt on your developer website, Privacy & messaging GDPR message published (the UMP form is configured there).
 - Play Console: Data safety form declares advertising id + analytics. The Google Mobile Ads plugin adds the `AD_ID` permission.
 - Test on a real device: consent form, rewarded grant, interstitial close, app open on resume, banner layout.
+
