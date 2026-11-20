@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+- Test assemblies compile only when com.unity.test-framework is installed (SKETCHSDK_TEST_FRAMEWORK).
+- Installer adds com.unity.ugui when missing (splash needs it). Found by a clean-project install smoke test.
+
 ## 1.3.0 - 2026-11-21
 
 - Added the installer package `com.sketch.sdk.installer` (`?path=/Installer`): Bounce-style copy of the SDK into `Assets/SketchSdk` with a manifest (`.sketch-install.txt`: stamp, owned files, SHA1). Update check against the newest `vX.Y.Z` tag on a background thread, Install/Update dialog with a session-scoped *Later*, hash check that lists and backs up locally edited SDK files, deletion limited to owned files the new version dropped, settings and splash hook never touched. Archive download with `git clone --depth 1` fallback. Removes an old `com.sketch.sdk` UPM entry and resolves packages. Menus **Check For Updates**, **Reinstall Current**, **Install Version...**.

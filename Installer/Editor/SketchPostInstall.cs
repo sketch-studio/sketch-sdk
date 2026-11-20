@@ -27,8 +27,25 @@ namespace Sketch.Sdk.Installer
             Debug.Log("[SketchSdkInstaller] Removed the old UPM entry " + match.Value.Trim() + " from " + MANIFEST_JSON + ".");
         }
 
+        // Packages the SDK payload needs to compile (the splash uses uGUI). A bare project template lacks them.
+        static readonly string[] REQUIRED_PACKAGES = { "com.unity.ugui" };
+
         public static void ResolvePackages()
         {
+            bool added = false;
+            try
+            {
+                string manifest = File.Exists("Packages/manifest.json") ? File.ReadAllText("Packages/manifest.json") : string.Empty;
+                foreach (string package in REQUIRED_PACKAGES)
+                    if (manifest.IndexOf("\"" + package + "\"", StringComparison.Ordinal) < 0)
+                    {
+                        Debug.Log("[SketchSdkInstaller] Adding required package " + package);
+                        Client.Add(package);   // Add resolves the whole manifest itself
+                        added = true;
+                    }
+            }
+            catch (Exception e) { Debug.LogWarning("[SketchSdkInstaller] Required package check failed: " + e.Message); }
+            if (added) return;
             try { Client.Resolve(); }
             catch (Exception e) { Debug.LogWarning("[SketchSdkInstaller] Package resolve failed: " + e.Message); }
         }
