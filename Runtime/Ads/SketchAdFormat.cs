@@ -7,5 +7,6 @@ namespace Sketch.Sdk
         Banner,
         AppOpen,
         Native,
+        RewardedInterstitial,
     }
 }

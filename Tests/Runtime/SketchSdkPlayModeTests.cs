@@ -71,6 +71,101 @@ namespace Sketch.Sdk.Tests
         }
 
         [UnityTest]
+        public IEnumerator RewardedInterstitial_GrantsExactlyOnce_AndRestoresAudio()
+        {
+            yield return WaitReady();
+            Assert.IsTrue(SketchAds.IsRewardedInterstitialReady, "fake provider supports rewarded interstitial");
+            int calls = 0, finished = 0;
+            bool granted = false;
+            var events = new List<string>();
+            SketchAnalytics.EventLogged += (name, p) => { if (name.StartsWith("ad_reward")) events.Add(name + ":" + p["format"] + ":" + p["placement"]); };
+            void OnFinished(string placement, bool ok) => finished++;
+            SketchAds.RewardedInterstitialFinished += OnFinished;
+            try
+            {
+                AudioListener.pause = false;
+                bool started = SketchAds.ShowRewardedInterstitial("ri_bonus", ok => { calls++; granted = ok; });
+                Assert.IsTrue(started);
+                Assert.IsTrue(AudioListener.pause, "audio pauses during the ad");
+                yield return Frames(5);
+                Assert.AreEqual(1, calls);
+                Assert.AreEqual(1, finished);
+                Assert.IsTrue(granted);
+                Assert.IsFalse(AudioListener.pause, "audio restored after the ad");
+                CollectionAssert.Contains(events, "ad_reward_granted:rewarded_interstitial:ri_bonus");
+            }
+            finally { SketchAds.RewardedInterstitialFinished -= OnFinished; }
+        }
+
+        [UnityTest]
+        public IEnumerator RewardedInterstitial_NoFill_ReturnsFalseOnce()
+        {
+            yield return WaitReady();
+            SketchEditorFakeProvider.SimulateNoFill = true;
+            try
+            {
+                int calls = 0;
+                bool granted = true;
+                Assert.IsFalse(SketchAds.ShowRewardedInterstitial("nofill", ok => { calls++; granted = ok; }));
+                yield return Frames(3);
+                Assert.AreEqual(1, calls);
+                Assert.IsFalse(granted);
+            }
+            finally { SketchEditorFakeProvider.SimulateNoFill = false; }
+        }
+
+        [UnityTest]
+        public IEnumerator RewardedInterstitial_Skipped_ReportsFalse()
+        {
+            yield return WaitReady();
+            SketchEditorFakeProvider.SimulateRewardSkipped = true;
+            try
+            {
+                int calls = 0;
+                bool granted = true;
+                Assert.IsTrue(SketchAds.ShowRewardedInterstitial("skip", ok => { calls++; granted = ok; }));
+                yield return Frames(3);
+                Assert.AreEqual(1, calls);
+                Assert.IsFalse(granted);
+            }
+            finally { SketchEditorFakeProvider.SimulateRewardSkipped = false; }
+        }
+
+        [UnityTest]
+        public IEnumerator AdsOffVersion_BlocksInterstitialAndRewardedInterstitial_KeepsRewarded()
+        {
+            yield return WaitReady();
+            SketchAdsPolicySettings saved = SketchAds.Policy.Settings;
+            string savedVersion = SketchAds.Policy.AppVersion;
+            try
+            {
+                SketchAds.Policy.AppVersion = Application.version;
+                SketchAds.Policy.Settings = new SketchAdsPolicySettings
+                {
+                    InterstitialStartDelaySeconds = 0f, InterstitialCooldownSeconds = 0f, AdsOffVersions = "0.0.0-other, " + Application.version,
+                };
+                int closed = 0;
+                Assert.IsFalse(SketchAds.ShowInterstitial("x", () => closed++));
+                Assert.AreEqual("ads_off_version", SketchAds.Policy.LastBlockReason);
+                Assert.AreEqual(1, closed, "onClosed still fires once");
+                Assert.IsFalse(SketchAds.IsRewardedInterstitialReady);
+                bool riResult = true;
+                Assert.IsFalse(SketchAds.ShowRewardedInterstitial("ri_off", ok => riResult = ok));
+                Assert.IsFalse(riResult);
+                Assert.IsFalse(SketchAds.IsNativeReady);
+                bool granted = false;
+                Assert.IsTrue(SketchAds.ShowRewarded("reward_on", ok => granted = ok), "rewarded keeps working for an ads-off version");
+                yield return Frames(3);
+                Assert.IsTrue(granted);
+            }
+            finally
+            {
+                SketchAds.Policy.Settings = saved;
+                SketchAds.Policy.AppVersion = savedVersion;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator Interstitial_FollowsPacing_AndAlwaysCallsOnClosed()
         {
             yield return WaitReady();
@@ -115,6 +210,10 @@ namespace Sketch.Sdk.Tests
                 Assert.IsTrue(SketchAds.ShowRewarded("still_works", ok => granted = ok));
                 yield return Frames(3);
                 Assert.IsTrue(granted);
+                bool riGranted = false;
+                Assert.IsTrue(SketchAds.ShowRewardedInterstitial("ri_still_works", ok => riGranted = ok), "rewarded interstitial keeps working under remove-ads");
+                yield return Frames(3);
+                Assert.IsTrue(riGranted);
             }
             finally
             {

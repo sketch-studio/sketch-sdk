@@ -10,6 +10,7 @@ namespace Sketch.Sdk
         public string BannerId { get; set; }
         public string AppOpenId { get; set; }
         public string NativeId { get; set; }
+        public string RewardedInterstitialId { get; set; }
         public string[] TestDeviceIds { get; set; } = Array.Empty<string>();
         public SketchAdMobTag ChildDirected { get; set; }
         public SketchAdMobTag UnderAgeOfConsent { get; set; }
@@ -23,6 +24,6 @@ namespace Sketch.Sdk
 
         public static bool HasAnyAdUnit(SketchAdMobConfig config) => config != null &&
             (IsUsableId(config.RewardedId) || IsUsableId(config.InterstitialId) || IsUsableId(config.BannerId) ||
-             IsUsableId(config.AppOpenId) || IsUsableId(config.NativeId));
+             IsUsableId(config.AppOpenId) || IsUsableId(config.NativeId) || IsUsableId(config.RewardedInterstitialId));
     }
 }

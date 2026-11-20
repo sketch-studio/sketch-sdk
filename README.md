@@ -4,7 +4,7 @@
 
 One Unity package for mobile monetization, modeled on Bounce SDK but **AdMob only** (no AppLovin MAX):
 
-- **Ads (Google AdMob):** banner, interstitial, rewarded, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
+- **Ads (Google AdMob):** banner, interstitial, rewarded, rewarded interstitial, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
 - **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads (rewarded keeps working). All overridable from remote config without a new build.
 - **Consent:** Google UMP (GDPR / US states) before ads, privacy-options button API. Ads are requested only when UMP allows it; if the form could not be answered (offline, dismissed) ads start after the privacy form or on the next resume, and the game never waits on it.
 - **Sketch Server:** analytics events, sessions, ad revenue (per paid impression), IAP revenue, remote config + A/B `configId`. Offline queue on disk, batched, retried.
@@ -47,6 +47,11 @@ SketchAds.ShowRewarded("double_coins", granted =>
     else ShowToast("No ad available, try again later");
 });
 bool canOfferReward = SketchAds.IsRewardedReady;   // enable/disable the reward button
+
+// Rewarded interstitial (natural break, no opt-in button). Google policy: show your own intro screen
+// that says what the reward is and lets the player opt out (skip) BEFORE calling this.
+if (SketchAds.IsRewardedInterstitialReady)
+    ShowIntroWithSkip(onWatch: () => SketchAds.ShowRewardedInterstitial("level_bonus", granted => { if (granted) coins += 50; }));
 
 // Banner (sticky until hidden). Lift bottom UI by the real height:
 SketchAds.ShowBanner();
@@ -94,7 +99,8 @@ Defaults (Bounce values) are in Settings > Pacing. Override any of them per A/B 
 | Key | Type | Meaning |
 |---|---|---|
 | `sketch_inter_start_delay` | seconds | no interstitial until this long after install (default 60) |
-| `sketch_inter_cooldown` | seconds | gap after any fullscreen ad (default 60) |
+| `sketch_inter_cooldown` | seconds | gap after any fullscreen ad (default 30) |
+| `sketch_ads_off_version` | string | comma-separated app versions (exact match with `Application.version`, e.g. `1.4.0,1.4.1`) that show no banner, interstitial, app open, native or rewarded interstitial; rewarded keeps working. Block reason `ads_off_version`. Empty = off |
 | `sketch_inter_min_session` | int | first session allowed to show interstitials |
 | `sketch_banner_start_delay` | seconds | banner hidden until this long after install |
 | `sketch_app_open_resume` | bool | app open when returning from background |

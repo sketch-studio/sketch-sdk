@@ -7,7 +7,8 @@ namespace Sketch.Sdk
     /// Editor stand-in: every format is ready, rewarded grants (house rule, so reward flows are playable),
     /// callbacks arrive on the next frame like a real SDK. Toggle SimulateNoFill to test the "no ad" paths.
     /// </summary>
-    public sealed class SketchEditorFakeProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchBannerLayoutEvents
+    public sealed class SketchEditorFakeProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchBannerLayoutEvents,
+        ISketchRewardedInterstitialProvider
     {
         public static bool SimulateNoFill;
         public static bool SimulateRewardSkipped;
@@ -28,6 +29,12 @@ namespace Sketch.Sdk
         public void ShowRewarded(Action<bool> onComplete)
         {
             SketchLog.Info("[FakeAds] Rewarded shown -> " + (SimulateRewardSkipped ? "skipped" : "granted"));
+            Fullscreen(() => onComplete?.Invoke(!SimulateRewardSkipped));
+        }
+
+        public void ShowRewardedInterstitial(Action<bool> onComplete)
+        {
+            SketchLog.Info("[FakeAds] Rewarded interstitial shown -> " + (SimulateRewardSkipped ? "skipped" : "granted"));
             Fullscreen(() => onComplete?.Invoke(!SimulateRewardSkipped));
         }
 

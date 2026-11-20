@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2 - 2026-11-21
+
+- Added AdMob **rewarded interstitial**: `SketchAds.ShowRewardedInterstitial(placement, onResult)`, `SketchAds.IsRewardedInterstitialReady`, `SketchAds.RewardedInterstitialFinished`, `SketchAdFormat.RewardedInterstitial` (appended). Optional provider capability `ISketchRewardedInterstitialProvider` (implemented by the AdMob provider and the Editor fake); `ISketchAdsProvider` is unchanged and a provider without the capability returns false and invokes nothing. Same reload back-off, late-reward grace, fullscreen lock, main-thread paid revenue and `rewarded_interstitial` telemetry as rewarded. Per-platform `RewardedInterstitial` ad unit field in Settings (Google test units in development builds). Keeps working under remove-ads. Google requires an intro screen with an opt-out before it is shown.
+- Added remote switch `sketch_ads_off_version` (Bounce `upAppVersion`): comma-separated app versions (exact, trimmed match against `Application.version`) that show no banner, interstitial, app open, native or rewarded interstitial; rewarded keeps working. Block reason `ads_off_version`. Pure rule `SketchAdsPolicy.IsVersionListed` / `AppVersion`, plus `CanShowNative`, `CanShowRewardedInterstitial`, `CanShowRewarded`.
+- Default interstitial spacing `InterstitialCooldownSeconds` 60 -> 30 s (Bounce). Existing Settings assets keep their serialized value; change it there or with `sketch_inter_cooldown`.
+- Removed the unreleased interstitial session/daily caps (`InterstitialSessionCap`, `InterstitialDailyCap`, `sketch_inter_session_cap`, `sketch_inter_daily_cap`) by owner decision.
+
 ## 1.2.1 - 2026-11-19
 
 - Added Unity metadata for packaged documentation assets so immutable Git package imports stay Console-clean.

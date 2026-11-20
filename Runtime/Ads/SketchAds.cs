@@ -33,12 +33,14 @@ namespace Sketch.Sdk
         public static event Action<bool> FullscreenAdChanged;
         /// <summary>Raised when a rewarded ad finished: (placement, granted).</summary>
         public static event Action<string, bool> RewardedFinished;
+        /// <summary>Raised when a rewarded interstitial finished: (placement, granted).</summary>
+        public static event Action<string, bool> RewardedInterstitialFinished;
 
         public static bool IsInitialized => SketchSdk.IsInitialized;
 
         // ---------------- remove ads ----------------
 
-        /// <summary>Remove-ads purchased: no banner, interstitial, app open or native. Rewarded keeps working.</summary>
+        /// <summary>Remove-ads purchased: no banner, interstitial, app open or native. Rewarded and rewarded interstitial keep working.</summary>
         public static bool IsAdsRemoved => Policy.AdsRemoved;
 
         public static void SetAdsRemoved(bool removed)
@@ -150,6 +152,60 @@ namespace Sketch.Sdk
             return started;
         }
 
+        // ---------------- rewarded interstitial ----------------
+
+        /// <summary>False when the provider has no rewarded-interstitial capability, no ad is loaded or this app version has ads off.</summary>
+        public static bool IsRewardedInterstitialReady => Policy.CanShowRewardedInterstitial() && SketchSdk.IsReady(SketchAdFormat.RewardedInterstitial);
+
+        /// <summary>
+        /// Shows a rewarded interstitial (Google requires an intro screen with an opt-out BEFORE calling this; the game owns it).
+        /// onResult fires exactly once: true only when the reward was earned, false when no ad was ready, the provider
+        /// has no rewarded-interstitial support or the player closed early. Keeps working under remove-ads, like rewarded.
+        /// Returns true when an ad started.
+        /// </summary>
+        public static bool ShowRewardedInterstitial(string placement, Action<bool> onResult)
+        {
+            placement = Normalize(placement);
+            bool done = false;
+            void Result(bool granted)
+            {
+                if (done) return;
+                done = true;
+                SketchAnalytics.Log(granted ? "ad_reward_granted" : "ad_reward_skipped", "format", "rewarded_interstitial", "placement", placement);
+                try { RewardedInterstitialFinished?.Invoke(placement, granted); } catch (Exception e) { Debug.LogException(e); }
+                if (onResult == null) return;
+                try { onResult(granted); } catch (Exception e) { Debug.LogException(e); }
+            }
+
+            if (!Policy.CanShowRewardedInterstitial())
+            {
+                SketchLog.Info($"Rewarded interstitial '{placement}' blocked: {Policy.LastBlockReason}");
+                Result(false);
+                return false;
+            }
+            if (!IsRewardedInterstitialReady)
+            {
+                LogNotReady("rewarded_interstitial", placement);
+                Result(false);
+                return false;
+            }
+            CurrentPlacement["rewarded_interstitial"] = placement;
+            BeginFullscreen();
+            bool started = SketchSdk.ShowRewardedInterstitial(granted =>
+            {
+                Policy.OnFullscreenClosed(Now);
+                EndFullscreen();
+                Result(granted);
+            });
+            if (!started)
+            {
+                EndFullscreen();
+                LogNotReady("rewarded_interstitial", placement);
+                Result(false);
+            }
+            return started;
+        }
+
         // ---------------- app open ----------------
 
         public static bool IsAppOpenReady => SketchSdk.IsReady(SketchAdFormat.AppOpen);
@@ -243,12 +299,12 @@ namespace Sketch.Sdk
 
         // ---------------- native ----------------
 
-        public static bool IsNativeReady => !IsAdsRemoved && SketchSdk.IsNativeReady;
+        public static bool IsNativeReady => Policy.CanShowNative() && SketchSdk.IsNativeReady;
 
-        /// <summary>Native ad drawn in a screen rect (e.g. beside a popup). Returns false when not ready / ads removed.</summary>
+        /// <summary>Native ad drawn in a screen rect (e.g. beside a popup). Returns false when not ready / ads removed / ads-off version.</summary>
         public static bool ShowNativeInRect(string placement, SketchNativeRequest request, SketchNativeCallbacks callbacks = null)
         {
-            if (IsAdsRemoved) return false;
+            if (!Policy.CanShowNative()) return false;
             CurrentPlacement["native"] = Normalize(placement);
             bool ok = SketchSdk.ShowNativeInRect(request, callbacks);
             if (!ok) LogNotReady("native", Normalize(placement));
@@ -264,6 +320,7 @@ namespace Sketch.Sdk
             {
                 Session = Math.Max(1, SketchIdentity.Session),
                 AdsRemoved = PlayerPrefs.GetInt(REMOVE_ADS_KEY, 0) == 1,   // a paying player stays ad-free even before the SDK starts
+                AppVersion = Application.version,   // matched against the remote sketch_ads_off_version list
             };
 
         internal static void Configure(SketchAdsPolicySettings settings)
@@ -397,6 +454,7 @@ namespace Sketch.Sdk
             _focusBackAt = -1;
             FullscreenAdChanged = null;
             RewardedFinished = null;
+            RewardedInterstitialFinished = null;
             PauseAudioDuringAds = true;
         }
     }

@@ -9,6 +9,8 @@ namespace Sketch.Sdk
     {
         readonly Dictionary<string, object> _defaults = new Dictionary<string, object>(StringComparer.Ordinal);
         readonly Dictionary<string, object> _remote = new Dictionary<string, object>(StringComparer.Ordinal);
+        // Provider layer (Firebase Remote Config): below the Sketch server answer, above the settings defaults.
+        readonly Dictionary<string, object> _provider = new Dictionary<string, object>(StringComparer.Ordinal);
 
         public string ConfigId { get; private set; } = string.Empty;
         public bool HasRemote { get; private set; }
@@ -17,7 +19,8 @@ namespace Sketch.Sdk
             get
             {
                 foreach (var key in _defaults.Keys) yield return key;
-                foreach (var key in _remote.Keys) if (!_defaults.ContainsKey(key)) yield return key;
+                foreach (var key in _provider.Keys) if (!_defaults.ContainsKey(key)) yield return key;
+                foreach (var key in _remote.Keys) if (!_defaults.ContainsKey(key) && !_provider.ContainsKey(key)) yield return key;
             }
         }
 
@@ -36,6 +39,13 @@ namespace Sketch.Sdk
             HasRemote = values != null;
         }
 
+        /// <summary>Replace provider values (Firebase Remote Config). The Sketch server answer still wins.</summary>
+        public void SetProvider(IDictionary<string, object> values)
+        {
+            _provider.Clear();
+            if (values != null) foreach (var pair in values) _provider[pair.Key] = pair.Value;
+        }
+
         public void ClearRemote()
         {
             _remote.Clear();
@@ -43,11 +53,12 @@ namespace Sketch.Sdk
             HasRemote = false;
         }
 
-        public bool Has(string key) => key != null && (_remote.ContainsKey(key) || _defaults.ContainsKey(key));
+        public bool Has(string key) => key != null && (_remote.ContainsKey(key) || _provider.ContainsKey(key) || _defaults.ContainsKey(key));
 
         public bool TryGetRaw(string key, out object value)
         {
             if (key != null && _remote.TryGetValue(key, out value)) return true;
+            if (key != null && _provider.TryGetValue(key, out value)) return true;
             if (key != null && _defaults.TryGetValue(key, out value)) return true;
             value = null;
             return false;

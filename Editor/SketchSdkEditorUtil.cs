@@ -177,13 +177,14 @@ namespace Sketch.Sdk.Editor
         {
             if (ids == null) return;
             bool anyUnit = !string.IsNullOrWhiteSpace(ids.Banner) || !string.IsNullOrWhiteSpace(ids.Interstitial) ||
-                           !string.IsNullOrWhiteSpace(ids.Rewarded) || !string.IsNullOrWhiteSpace(ids.AppOpen) || !string.IsNullOrWhiteSpace(ids.Native);
+                           !string.IsNullOrWhiteSpace(ids.Rewarded) || !string.IsNullOrWhiteSpace(ids.AppOpen) || !string.IsNullOrWhiteSpace(ids.Native) ||
+                           !string.IsNullOrWhiteSpace(ids.RewardedInterstitial);
             if (!anyUnit) { issues.Add(new Issue(MessageType.Info, $"{name}: no ad unit ids (formats left blank stay off).")); return; }
             if (string.IsNullOrWhiteSpace(ids.AppId))
                 issues.Add(new Issue(forRelease ? MessageType.Error : MessageType.Warning, $"{name}: AdMob App ID is empty (the app crashes on launch without it)."));
             else if (!ids.AppId.Trim().Contains("~"))
                 issues.Add(new Issue(MessageType.Error, $"{name}: App ID must contain '~' (ca-app-pub-XXXX~YYYY); an ad unit id uses '/'."));
-            foreach (var pair in new[] { ("Banner", ids.Banner), ("Interstitial", ids.Interstitial), ("Rewarded", ids.Rewarded), ("App open", ids.AppOpen), ("Native", ids.Native) })
+            foreach (var pair in new[] { ("Banner", ids.Banner), ("Interstitial", ids.Interstitial), ("Rewarded", ids.Rewarded), ("App open", ids.AppOpen), ("Native", ids.Native), ("Rewarded interstitial", ids.RewardedInterstitial) })
             {
                 string id = pair.Item2?.Trim();
                 if (string.IsNullOrEmpty(id)) continue;

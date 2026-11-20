@@ -22,9 +22,11 @@ namespace Sketch.Sdk
         /// <summary>No interstitial until this many seconds after the FIRST app open (install).</summary>
         public float InterstitialStartDelaySeconds = 60f;
         /// <summary>Minimum seconds between an interstitial and the previous fullscreen ad (interstitial, rewarded or app open).</summary>
-        public float InterstitialCooldownSeconds = 60f;
+        public float InterstitialCooldownSeconds = 30f;
         /// <summary>Session number from which interstitials may show (1 = first session).</summary>
         public int InterstitialMinSession = 1;
+        /// <summary>Comma-separated app versions (exact, trimmed) that show no banner, interstitial, app open, native or rewarded interstitial. Rewarded keeps working. Empty = off.</summary>
+        public string AdsOffVersions = "";
         public List<SketchPlacementRule> Placements = new List<SketchPlacementRule>();
         /// <summary>Banner stays hidden until this many seconds after the first app open.</summary>
         public float BannerStartDelaySeconds;

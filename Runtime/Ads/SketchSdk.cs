@@ -95,6 +95,8 @@ namespace Sketch.Sdk
                 return _provider is ISketchBannerAdsProvider banner && banner.IsBannerReady;
             if (format == SketchAdFormat.Native)
                 return _provider is ISketchNativeAdsProvider native && native.IsNativeReady;
+            if (format == SketchAdFormat.RewardedInterstitial && !(_provider is ISketchRewardedInterstitialProvider))
+                return false;
             return _provider.IsReady(format);
         }
 
@@ -179,6 +181,40 @@ namespace Sketch.Sdk
                 _abortFullscreen = null;
                 ReleaseFullscreen();
                 Debug.LogWarning("[SketchAds] Rewarded show failed: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Rewarded interstitial (optional capability). Returns false and invokes nothing when the provider lacks
+        /// ISketchRewardedInterstitialProvider, no ad is ready or another fullscreen ad is in progress.
+        /// </summary>
+        public static bool ShowRewardedInterstitial(Action<bool> onComplete)
+        {
+            if (!(_provider is ISketchRewardedInterstitialProvider provider)) return false;
+            if (!IsReady(SketchAdFormat.RewardedInterstitial) || !TryReserveFullscreen()) return false;
+            bool completed = false;
+            void Complete(bool ok)
+            {
+                if (completed) return;
+                completed = true;
+                _abortFullscreen = null;
+                ReleaseFullscreen();
+                onComplete?.Invoke(ok);
+            }
+            _abortFullscreen = () => Complete(false);
+            try
+            {
+                provider.ShowRewardedInterstitial(Complete);
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (completed) throw;
+                completed = true;
+                _abortFullscreen = null;
+                ReleaseFullscreen();
+                Debug.LogWarning("[SketchAds] Rewarded interstitial show failed: " + e.Message);
                 return false;
             }
         }

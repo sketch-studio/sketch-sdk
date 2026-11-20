@@ -267,7 +267,102 @@ SketchSdk.BannerLayoutChanged -= healthyReconfiguringSubscriber;
 SketchSdk.BannerLayoutChanged -= reconfiguringSubscriber;
 SketchSdk.BannerLayoutChanged -= staleLaterSubscriber;
 
+// Rewarded interstitial: optional capability (ISketchRewardedInterstitialProvider), mirrors rewarded.
+var noCapability = new TestProvider(true);
+SketchSdk.Initialize(noCapability);
+int noCapabilityCalls = 0;
+Check(!SketchSdk.IsReady(SketchAdFormat.RewardedInterstitial), "rewarded interstitial is never ready without the capability");
+Check(!SketchSdk.ShowRewardedInterstitial(_ => noCapabilityCalls++), "provider without capability rejects rewarded interstitial");
+Check(noCapabilityCalls == 0, "rejected rewarded interstitial invokes nothing");
+Check(SketchSdk.ShowInterstitial(() => { }), "rejected rewarded interstitial leaves the fullscreen slot free");
+
+var riBlocked = new RewardedInterstitialTestProvider(false);
+SketchSdk.Initialize(riBlocked);
+int riBlockedCalls = 0;
+Check(!SketchSdk.ShowRewardedInterstitial(_ => riBlockedCalls++) && riBlockedCalls == 0 && riBlocked.ShowCalls == 0,
+    "not-ready rewarded interstitial rejects without calling the provider or the callback");
+
+var riDuplicate = new RewardedInterstitialTestProvider(true) { Duplicate = true };
+SketchSdk.Initialize(riDuplicate);
+int riCalls = 0;
+bool riGranted = false;
+Check(SketchSdk.IsReady(SketchAdFormat.RewardedInterstitial), "capable ready provider reports rewarded interstitial ready");
+Check(SketchSdk.ShowRewardedInterstitial(ok => { riCalls++; riGranted = ok; }), "ready rewarded interstitial starts");
+Check(riCalls == 1 && riGranted, "duplicate rewarded interstitial callbacks are coalesced");
+
+var riHeld = new RewardedInterstitialTestProvider(true) { Hold = true };
+SketchSdk.Initialize(riHeld);
+int riHeldCalls = 0, riOverlapCalls = 0;
+Check(SketchSdk.ShowRewardedInterstitial(_ => riHeldCalls++), "held rewarded interstitial reserves the fullscreen slot");
+Check(!SketchSdk.ShowRewarded(_ => riOverlapCalls++) && !SketchSdk.ShowInterstitial(() => riOverlapCalls++) &&
+      !SketchSdk.ShowRewardedInterstitial(_ => riOverlapCalls++), "nothing overlaps a pending rewarded interstitial");
+Check(riOverlapCalls == 0, "rejected overlaps invoke nothing");
+riHeld.Finish(false);
+Check(riHeldCalls == 1, "rewarded interstitial completion fires once");
+Check(SketchSdk.ShowRewardedInterstitial(_ => riHeldCalls++), "slot released after rewarded interstitial completes");
+Check(SketchSdk.ForceCloseFullscreen() && riHeldCalls == 2, "watchdog completes a stuck rewarded interstitial as not granted");
+riHeld.Finish(true);
+Check(riHeldCalls == 2, "late provider callback after watchdog is ignored");
+
+var riThrows = new RewardedInterstitialTestProvider(true) { Throw = true };
+SketchSdk.Initialize(riThrows);
+int riThrowCalls = 0;
+Check(!SketchSdk.ShowRewardedInterstitial(_ => riThrowCalls++) && riThrowCalls == 0, "throwing provider returns false and invokes nothing");
+Check(SketchSdk.ShowInterstitial(() => { }), "throwing rewarded interstitial releases the slot");
+
+// Ads off for app version (Bounce upAppVersion): remote comma list, exact trimmed match; rewarded stays.
+Check(new SketchAdsPolicySettings().InterstitialCooldownSeconds == 30f, "default interstitial spacing is 30 s");
+var offPol = new SketchAdsPolicy(new SketchAdsPolicySettings { InterstitialStartDelaySeconds = 0, InterstitialCooldownSeconds = 0, AppOpenOnColdStart = true, AdsOffVersions = " 1.0.1 , 1.2.0" }, 0) { AppVersion = "1.2.0" };
+Check(offPol.IsAdsOffForVersion, "comma list matches trimmed entry");
+Check(!offPol.CanShowInterstitial("p", 100) && offPol.LastBlockReason == "ads_off_version", "ads-off version blocks interstitial");
+Check(!offPol.CanShowBanner(100) && offPol.LastBlockReason == "ads_off_version", "ads-off version blocks banner");
+Check(!offPol.CanShowAppOpen(100, true, 0) && offPol.LastBlockReason == "ads_off_version", "ads-off version blocks app open");
+Check(!offPol.CanShowNative() && offPol.LastBlockReason == "ads_off_version", "ads-off version blocks native");
+Check(!offPol.CanShowRewardedInterstitial() && offPol.LastBlockReason == "ads_off_version", "ads-off version blocks rewarded interstitial");
+Check(offPol.CanShowRewarded(), "ads-off version keeps rewarded");
+offPol.AppVersion = "1.2.01";
+Check(!offPol.IsAdsOffForVersion && offPol.CanShowInterstitial("p", 100), "no match (exact compare) keeps ads");
+offPol.AppVersion = "1.0.1";
+Check(offPol.IsAdsOffForVersion, "first list entry matches after trim");
+offPol.Settings.AdsOffVersions = "";
+Check(!offPol.IsAdsOffForVersion && offPol.CanShowBanner(100), "empty list means off");
+offPol.AppVersion = "";
+offPol.Settings.AdsOffVersions = " , ";
+Check(!offPol.IsAdsOffForVersion, "blank entries never match a blank version");
+var offCfg = new SketchConfigValues();
+offCfg.SetRemote(new Dictionary<string, object> { [SketchAdsRemoteKeys.ADS_OFF_VERSION] = "2.0.0,2.0.1" }, "Default");
+Check(SketchAdsRemoteKeys.Apply(new SketchAdsPolicySettings(), offCfg).AdsOffVersions == "2.0.0,2.0.1", "remote key sketch_ads_off_version overrides");
+Check(SketchAdsRemoteKeys.ADS_OFF_VERSION == "sketch_ads_off_version", "remote key name");
+var removedPol = new SketchAdsPolicy(new SketchAdsPolicySettings(), 0) { AdsRemoved = true };
+Check(removedPol.CanShowRewardedInterstitial() && removedPol.CanShowRewarded(), "remove-ads keeps rewarded and rewarded interstitial");
+Check(!removedPol.CanShowNative() && removedPol.LastBlockReason == "ads_removed", "remove-ads blocks native");
+
 Console.WriteLine($"PASS: {assertions} assertions");
+
+sealed class RewardedInterstitialTestProvider : ISketchAdsProvider, ISketchRewardedInterstitialProvider
+{
+    readonly bool _ready;
+    Action<bool> _pending;
+    public bool Duplicate { get; set; }
+    public bool Hold { get; set; }
+    public bool Throw { get; set; }
+    public int ShowCalls { get; private set; }
+    public RewardedInterstitialTestProvider(bool ready) => _ready = ready;
+    public void Initialize(Action<bool> callback) => callback?.Invoke(true);
+    public bool IsReady(SketchAdFormat format) => _ready;
+    public void ShowRewarded(Action<bool> callback) => callback?.Invoke(true);
+    public void ShowInterstitial(Action callback) => callback?.Invoke();
+    public void ShowAppOpen(Action callback) => callback?.Invoke();
+    public void ShowRewardedInterstitial(Action<bool> callback)
+    {
+        ShowCalls++;
+        if (Throw) throw new InvalidOperationException("provider failure");
+        if (Hold) { _pending = callback; return; }
+        callback?.Invoke(true);
+        if (Duplicate) callback?.Invoke(true);
+    }
+    public void Finish(bool result) { var callback = _pending; _pending = null; callback?.Invoke(result); }
+}
 
 sealed class BannerTestProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchBannerLayoutEvents
 {

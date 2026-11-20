@@ -18,6 +18,8 @@ namespace Sketch.Sdk
         public const string APP_OPEN_MIN_BACKGROUND = "sketch_app_open_min_background";
         public const string APP_OPEN_AFTER_FULLSCREEN = "sketch_app_open_after_fullscreen";
         public const string PLACEMENTS = "sketch_ads_placements";
+        /// <summary>Comma-separated app versions with ads off (Bounce upAppVersion). Rewarded keeps working.</summary>
+        public const string ADS_OFF_VERSION = "sketch_ads_off_version";
 
         /// <summary>Returns a new settings object: source values overlaid by the remote keys present in values.</summary>
         public static SketchAdsPolicySettings Apply(SketchAdsPolicySettings source, SketchConfigValues values)
@@ -28,6 +30,7 @@ namespace Sketch.Sdk
                 InterstitialStartDelaySeconds = values.GetFloat(INTER_START_DELAY, source.InterstitialStartDelaySeconds),
                 InterstitialCooldownSeconds = values.GetFloat(INTER_COOLDOWN, source.InterstitialCooldownSeconds),
                 InterstitialMinSession = values.GetInt(INTER_MIN_SESSION, source.InterstitialMinSession),
+                AdsOffVersions = values.GetString(ADS_OFF_VERSION, source.AdsOffVersions ?? string.Empty),
                 BannerStartDelaySeconds = values.GetFloat(BANNER_START_DELAY, source.BannerStartDelaySeconds),
                 AppOpenOnResume = values.GetBool(APP_OPEN_RESUME, source.AppOpenOnResume),
                 AppOpenOnColdStart = values.GetBool(APP_OPEN_COLD_START, source.AppOpenOnColdStart),

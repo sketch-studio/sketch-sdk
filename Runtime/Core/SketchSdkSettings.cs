@@ -14,6 +14,7 @@ namespace Sketch.Sdk
         public string Rewarded = "";
         public string AppOpen = "";
         public string Native = "";
+        public string RewardedInterstitial = "";
 
         public void Trim()
         {
@@ -23,6 +24,7 @@ namespace Sketch.Sdk
             Rewarded = (Rewarded ?? "").Trim();
             AppOpen = (AppOpen ?? "").Trim();
             Native = (Native ?? "").Trim();
+            RewardedInterstitial = (RewardedInterstitial ?? "").Trim();
         }
     }
 
@@ -149,6 +151,7 @@ namespace Sketch.Sdk
                 RewardedId = Pick(ids.Rewarded, test, SketchAdMobTestIds.Rewarded(ios)),
                 AppOpenId = Pick(ids.AppOpen, test, SketchAdMobTestIds.AppOpen(ios)),
                 NativeId = Pick(ids.Native, test, SketchAdMobTestIds.Native(ios)),
+                RewardedInterstitialId = Pick(ids.RewardedInterstitial, test, SketchAdMobTestIds.RewardedInterstitial(ios)),
                 TestDeviceIds = TestDeviceIds != null ? TestDeviceIds.ToArray() : Array.Empty<string>(),
                 ChildDirected = ChildDirected,
                 UnderAgeOfConsent = UnderAgeOfConsent,

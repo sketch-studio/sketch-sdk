@@ -83,6 +83,14 @@ namespace Sketch.Sdk
             RaiseUpdated();
         }
 
+        /// <summary>Values from a provider module (Firebase Remote Config). The Sketch server answer still wins.</summary>
+        public static void ApplyProviderValues(IDictionary<string, object> values, string source)
+        {
+            Values.SetProvider(values);
+            SketchLog.Info($"Remote config from {source}: {(values != null ? values.Count : 0)} keys.");
+            RaiseUpdated();
+        }
+
         internal static void MarkReady()
         {
             if (IsReady) return;

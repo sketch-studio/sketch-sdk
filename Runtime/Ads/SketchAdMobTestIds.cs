@@ -11,6 +11,7 @@ namespace Sketch.Sdk
         public static string Rewarded(bool ios) => ios ? "ca-app-pub-3940256099942544/1712485313" : "ca-app-pub-3940256099942544/5224354917";
         public static string AppOpen(bool ios) => ios ? "ca-app-pub-3940256099942544/5575463023" : "ca-app-pub-3940256099942544/9257395921";
         public static string Native(bool ios) => ios ? "ca-app-pub-3940256099942544/3986624511" : "ca-app-pub-3940256099942544/2247696110";
+        public static string RewardedInterstitial(bool ios) => ios ? "ca-app-pub-3940256099942544/6978759866" : "ca-app-pub-3940256099942544/5354046379";
 
         public static bool IsTestId(string id) => !string.IsNullOrEmpty(id) && id.StartsWith("ca-app-pub-3940256099942544");
     }

@@ -171,5 +171,128 @@ namespace Sketch.Sdk.Tests
             Assert.AreEqual("ca-app-pub-1/2", s.BuildAdMobConfig().RewardedId, "trimmed real id");
             UnityEngine.Object.DestroyImmediate(s);
         }
+
+        [Test]
+        public void Settings_RewardedInterstitial_TestModeAndTrim()
+        {
+            var s = UnityEngine.ScriptableObject.CreateInstance<SketchSdkSettings>();
+            s.Android.RewardedInterstitial = " ca-app-pub-1/3 ";
+            s.Ios.RewardedInterstitial = " ca-app-pub-1/3 ";
+            s.ForceTestAds = true;
+            SketchAdMobConfig config = s.BuildAdMobConfig();
+            Assert.IsTrue(SketchAdMobTestIds.IsTestId(config.RewardedInterstitialId));
+            Assert.AreEqual(string.Empty, config.RewardedId, "blank format stays off in test mode");
+            Assert.IsTrue(SketchAdMobConfig.HasAnyAdUnit(config), "a rewarded interstitial id alone is a usable ad unit");
+            s.ForceTestAds = false;
+            s.TestAdsInDevelopmentBuild = false;
+            Assert.AreEqual("ca-app-pub-1/3", s.BuildAdMobConfig().RewardedInterstitialId, "trimmed real id");
+            UnityEngine.Object.DestroyImmediate(s);
+        }
+
+        [Test]
+        public void RewardedInterstitial_TestIds_AreGoogleSamples()
+        {
+            Assert.AreEqual("ca-app-pub-3940256099942544/5354046379", SketchAdMobTestIds.RewardedInterstitial(false));
+            Assert.AreEqual("ca-app-pub-3940256099942544/6978759866", SketchAdMobTestIds.RewardedInterstitial(true));
+        }
+
+        sealed class NoRewardedInterstitialProvider : ISketchAdsProvider
+        {
+            public int Calls;
+            public void Initialize(System.Action<bool> onInitialized) => onInitialized?.Invoke(true);
+            public bool IsReady(SketchAdFormat format) => true;
+            public void ShowRewarded(System.Action<bool> onComplete) { Calls++; onComplete?.Invoke(true); }
+            public void ShowInterstitial(System.Action onClosed) { Calls++; onClosed?.Invoke(); }
+            public void ShowAppOpen(System.Action onClosed) { Calls++; onClosed?.Invoke(); }
+        }
+
+        [Test]
+        public void RewardedInterstitial_ProviderWithoutCapability_ReturnsFalseAndInvokesNothing()
+        {
+            var provider = new NoRewardedInterstitialProvider();
+            SketchSdk.Initialize(provider);
+            int callbacks = 0;
+            Assert.IsFalse(SketchSdk.IsReady(SketchAdFormat.RewardedInterstitial), "never ready without the capability, even if IsReady says true");
+            Assert.IsFalse(SketchSdk.ShowRewardedInterstitial(_ => callbacks++));
+            Assert.AreEqual(0, callbacks, "no callback");
+            Assert.AreEqual(0, provider.Calls, "no provider call");
+            Assert.IsFalse(SketchSdk.FullscreenAdShowing);
+        }
+
+        // Ads off for an app version (Bounce upAppVersion): remote comma list, exact trimmed match. Rewarded keeps working.
+        static SketchAdsPolicy OffPolicy(string list, string version) =>
+            new SketchAdsPolicy(new SketchAdsPolicySettings { InterstitialStartDelaySeconds = 0, InterstitialCooldownSeconds = 0, AppOpenOnColdStart = true, AdsOffVersions = list }, 0)
+            { AppVersion = version };
+
+        [Test]
+        public void AdsOffVersion_Match_BlocksAllButRewarded()
+        {
+            SketchAdsPolicy policy = OffPolicy("1.2.0", "1.2.0");
+            Assert.IsFalse(policy.CanShowInterstitial("p", 100)); Assert.AreEqual("ads_off_version", policy.LastBlockReason);
+            Assert.IsFalse(policy.CanShowBanner(100)); Assert.AreEqual("ads_off_version", policy.LastBlockReason);
+            Assert.IsFalse(policy.CanShowAppOpen(100, true, 0)); Assert.AreEqual("ads_off_version", policy.LastBlockReason);
+            Assert.IsFalse(policy.CanShowNative()); Assert.AreEqual("ads_off_version", policy.LastBlockReason);
+            Assert.IsFalse(policy.CanShowRewardedInterstitial()); Assert.AreEqual("ads_off_version", policy.LastBlockReason);
+        }
+
+        [Test]
+        public void AdsOffVersion_NoMatch_KeepsAds()
+        {
+            SketchAdsPolicy policy = OffPolicy("1.2.0", "1.2.01");
+            Assert.IsFalse(policy.IsAdsOffForVersion, "exact compare, no prefix match");
+            Assert.IsTrue(policy.CanShowInterstitial("p", 100));
+            Assert.IsTrue(policy.CanShowBanner(100));
+            Assert.IsTrue(policy.CanShowRewardedInterstitial());
+        }
+
+        [Test]
+        public void AdsOffVersion_CommaList_TrimsEntries()
+        {
+            Assert.IsTrue(OffPolicy(" 1.0.1 , 1.2.0 ", "1.2.0").IsAdsOffForVersion);
+            Assert.IsTrue(OffPolicy(" 1.0.1 , 1.2.0 ", "1.0.1").IsAdsOffForVersion);
+            Assert.IsFalse(OffPolicy(" 1.0.1 , 1.2.0 ", "1.1.0").IsAdsOffForVersion);
+        }
+
+        [Test]
+        public void AdsOffVersion_EmptyMeansOff()
+        {
+            Assert.IsFalse(OffPolicy("", "1.2.0").IsAdsOffForVersion);
+            Assert.IsFalse(OffPolicy(null, "1.2.0").IsAdsOffForVersion);
+            Assert.IsFalse(OffPolicy(" , ", "").IsAdsOffForVersion, "blank entries never match a blank version");
+            Assert.IsTrue(OffPolicy("", "1.2.0").CanShowInterstitial("p", 100));
+        }
+
+        [Test]
+        public void AdsOffVersion_RewardedStillAllowed()
+        {
+            SketchAdsPolicy policy = OffPolicy("1.2.0", "1.2.0");
+            policy.AdsRemoved = true;
+            Assert.IsTrue(policy.CanShowRewarded(), "rewarded is never blocked by policy");
+        }
+
+        [Test]
+        public void AdsOffVersion_RemoteKeyOverrides_AndCooldownDefaultIs30()
+        {
+            var values = new SketchConfigValues();
+            values.SetRemote(new Dictionary<string, object> { { SketchAdsRemoteKeys.ADS_OFF_VERSION, "2.0.0,2.0.1" } }, "cfg");
+            Assert.AreEqual("sketch_ads_off_version", SketchAdsRemoteKeys.ADS_OFF_VERSION);
+            Assert.AreEqual("2.0.0,2.0.1", SketchAdsRemoteKeys.Apply(new SketchAdsPolicySettings(), values).AdsOffVersions);
+            Assert.AreEqual(30f, new SketchAdsPolicySettings().InterstitialCooldownSeconds, "Bounce spacing: 30 s between interstitials");
+        }
+
+        // Firebase Remote Config layer: server > provider (Firebase) > defaults.
+        [Test]
+        public void ConfigValues_ProviderLayerSitsBetweenServerAndDefaults()
+        {
+            var values = new SketchConfigValues();
+            values.SetDefault("a", 1); values.SetDefault("b", 1); values.SetDefault("c", 1);
+            values.SetProvider(new Dictionary<string, object> { { "b", 2 }, { "c", 2 } });
+            values.SetRemote(new Dictionary<string, object> { { "c", 3 } }, "cfg");
+            Assert.AreEqual(1, values.GetInt("a"));
+            Assert.AreEqual(2, values.GetInt("b"));
+            Assert.AreEqual(3, values.GetInt("c"));
+            values.ClearRemote();
+            Assert.AreEqual(2, values.GetInt("c"), "provider survives a cleared server answer");
+        }
     }
 }
