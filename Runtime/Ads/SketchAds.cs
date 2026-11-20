@@ -14,9 +14,8 @@ namespace Sketch.Sdk
     /// </summary>
     public static class SketchAds
     {
-        const string REMOVE_ADS_KEY = "sketchsdk.remove_ads";
-
         static SketchAdsPolicy _policy;
+        static ISketchAdsRemovedStore _adsRemovedStore;
         static readonly Dictionary<string, string> CurrentPlacement = new Dictionary<string, string>();
         static bool _bannerWanted;
         static bool _bannerShown;
@@ -43,11 +42,34 @@ namespace Sketch.Sdk
         /// <summary>Remove-ads purchased: no banner, interstitial, app open or native. Rewarded and rewarded interstitial keep working.</summary>
         public static bool IsAdsRemoved => Policy.AdsRemoved;
 
+        /// <summary>Default remove-ads store (SDK 1.2 key), kept for backward compatibility with existing saves.</summary>
+        sealed class PlayerPrefsAdsRemovedStore : ISketchAdsRemovedStore
+        {
+            const string KEY = "sketchsdk.remove_ads";
+            public bool Load() => PlayerPrefs.GetInt(KEY, 0) == 1;
+            public void Save(bool removed)
+            {
+                PlayerPrefs.SetInt(KEY, removed ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+        }
+
+        static ISketchAdsRemovedStore AdsRemovedStore => _adsRemovedStore ??= new PlayerPrefsAdsRemovedStore();
+
+        /// <summary>
+        /// Persist the remove-ads flag in the game's own save (e.g. a DataBlock) instead of the PlayerPrefs default.
+        /// Call after the game data loaded; the current flag is re-read from the store at once. null restores the default.
+        /// </summary>
+        public static void UseAdsRemovedStore(ISketchAdsRemovedStore store)
+        {
+            _adsRemovedStore = store ?? new PlayerPrefsAdsRemovedStore();
+            if (_policy != null) _policy.AdsRemoved = _adsRemovedStore.Load();
+        }
+
         public static void SetAdsRemoved(bool removed)
         {
             Policy.AdsRemoved = removed;
-            PlayerPrefs.SetInt(REMOVE_ADS_KEY, removed ? 1 : 0);
-            PlayerPrefs.Save();
+            AdsRemovedStore.Save(removed);
             if (removed)
             {
                 if (_bannerShown) SketchSdk.HideBanner();
@@ -319,7 +341,7 @@ namespace Sketch.Sdk
             new SketchAdsPolicy(settings ?? new SketchAdsPolicySettings(), SketchIdentity.FirstOpenUnix > 0 ? SketchIdentity.FirstOpenUnix : SketchIdentity.NowUnix)
             {
                 Session = Math.Max(1, SketchIdentity.Session),
-                AdsRemoved = PlayerPrefs.GetInt(REMOVE_ADS_KEY, 0) == 1,   // a paying player stays ad-free even before the SDK starts
+                AdsRemoved = AdsRemovedStore.Load(),   // a paying player stays ad-free even before the SDK starts
                 AppVersion = Application.version,   // matched against the remote sketch_ads_off_version list
             };
 
@@ -442,6 +464,7 @@ namespace Sketch.Sdk
         {
             Application.focusChanged -= OnFocusChanged;
             _policy = null;
+            _adsRemovedStore = null;
             CurrentPlacement.Clear();
             _bannerWanted = false;
             _bannerShown = false;

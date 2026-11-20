@@ -1,0 +1,30 @@
+{
+  "name": "SketchSdk.MobileNotifications",
+  "rootNamespace": "Sketch.Sdk",
+  "references": [
+    "SketchSdk.Runtime",
+    "Unity.Notifications.Android",
+    "Unity.Notifications.iOS"
+  ],
+  "includePlatforms": [
+    "Android",
+    "iOS",
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "SKETCHSDK_NOTIFICATIONS"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.mobile.notifications",
+      "expression": "2.0.0",
+      "define": "SKETCHSDK_NOTIFICATIONS"
+    }
+  ],
+  "noEngineReferences": false
+}

@@ -1,0 +1,30 @@
+{
+  "name": "SketchSdk.PlayAppUpdate",
+  "rootNamespace": "Sketch.Sdk",
+  "references": [
+    "SketchSdk.Runtime",
+    "Google.Play.AppUpdate",
+    "Google.Play.Common",
+    "Google.Play.Core"
+  ],
+  "includePlatforms": [
+    "Android",
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "SKETCHSDK_PLAY_APPUPDATE"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.google.play.appupdate",
+      "expression": "1.8.0",
+      "define": "SKETCHSDK_PLAY_APPUPDATE"
+    }
+  ],
+  "noEngineReferences": false
+}

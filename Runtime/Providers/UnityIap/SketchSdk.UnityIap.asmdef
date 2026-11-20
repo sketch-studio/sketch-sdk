@@ -1,0 +1,25 @@
+{
+  "name": "SketchSdk.UnityIap",
+  "rootNamespace": "Sketch.Sdk",
+  "references": [
+    "SketchSdk.Runtime",
+    "Unity.Purchasing"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "SKETCHSDK_UNITY_IAP"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.purchasing",
+      "expression": "5.5.0",
+      "define": "SKETCHSDK_UNITY_IAP"
+    }
+  ],
+  "noEngineReferences": false
+}

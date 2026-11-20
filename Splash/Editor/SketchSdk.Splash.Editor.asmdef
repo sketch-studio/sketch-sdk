@@ -1,0 +1,20 @@
+{
+  "name": "SketchSdk.Splash.Editor",
+  "rootNamespace": "Sketch.Sdk.Splash.Editor",
+  "references": [
+    "SketchSdk.Runtime",
+    "SketchSdk.Splash",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,30 @@
+{
+  "name": "SketchSdk.PlayReview",
+  "rootNamespace": "Sketch.Sdk",
+  "references": [
+    "SketchSdk.Runtime",
+    "Google.Play.Review",
+    "Google.Play.Common",
+    "Google.Play.Core"
+  ],
+  "includePlatforms": [
+    "Android",
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "SKETCHSDK_PLAY_REVIEW"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.google.play.review",
+      "expression": "1.8.0",
+      "define": "SKETCHSDK_PLAY_REVIEW"
+    }
+  ],
+  "noEngineReferences": false
+}
