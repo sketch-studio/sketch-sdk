@@ -20,7 +20,7 @@ namespace Sketch.Sdk
     public sealed class SketchAdsPolicySettings
     {
         /// <summary>No interstitial until this many seconds after the FIRST app open (install).</summary>
-        public float InterstitialStartDelaySeconds = 60f;
+        public float InterstitialStartDelaySeconds = 30f;
         /// <summary>Minimum seconds between an interstitial and the previous fullscreen ad (interstitial, rewarded or app open).</summary>
         public float InterstitialCooldownSeconds = 30f;
         /// <summary>Session number from which interstitials may show (1 = first session).</summary>
@@ -33,7 +33,7 @@ namespace Sketch.Sdk
         /// <summary>Show an app-open ad when the app returns from background.</summary>
         public bool AppOpenOnResume = true;
         /// <summary>Show an app-open ad once on cold start when it loads in time.</summary>
-        public bool AppOpenOnColdStart;
+        public bool AppOpenOnColdStart = true;
         /// <summary>No app-open ad until this many seconds after the first app open.</summary>
         public float AppOpenStartDelaySeconds;
         /// <summary>Background time needed before resume shows an app-open ad.</summary>

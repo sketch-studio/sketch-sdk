@@ -22,9 +22,9 @@ namespace Sketch.Sdk.Splash
         [Tooltip("Logo shown alone before the loading bar appears.")]
         [SerializeField] float _brandSeconds = 0.5f;
         [Tooltip("The bar never completes faster than this.")]
-        [SerializeField] float _minDuration = 1.5f;
+        [SerializeField] float _minDuration = 5f; // Bounce-style: gives the cold-start App Open time to load
         [Tooltip("Hard cap: the splash leaves by this time whatever is still pending (an app-open ad already on screen is allowed to close).")]
-        [SerializeField] float _maxDuration = 4f;
+        [SerializeField] float _maxDuration = 8f;
         [SerializeField] float _remoteConfigTimeout = 3f;
         [SerializeField] float _consentTimeout = 3f;
 

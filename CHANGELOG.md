@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3
+- Splash defaults Bounce-style: minimum 5 s loading, 8 s hard cap, so the cold-start App Open has time to load and shows before the game scene.
+- AppOpenOnColdStart defaults to true; interstitial start delay defaults to 30 s (time-only pacing, 30 s cooldown).
+
 ## 1.3.2
 - Splash: a transparent bar colour hides the whole bar group (track too), for games whose own loading screen follows.
 
