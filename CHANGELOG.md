@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.2
+- Splash: a transparent bar colour hides the whole bar group (track too), for games whose own loading screen follows.
+
 ## 1.3.1
 - Test assemblies compile only when com.unity.test-framework is installed (SKETCHSDK_TEST_FRAMEWORK).
 - Installer adds com.unity.ugui when missing (splash needs it). Found by a clean-project install smoke test.

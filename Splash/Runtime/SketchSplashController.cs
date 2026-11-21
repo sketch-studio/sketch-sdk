@@ -85,7 +85,8 @@ namespace Sketch.Sdk.Splash
         void Tick()
         {
             float elapsed = Elapsed;
-            if (_barGroup != null) _barGroup.alpha = Mathf.Clamp01((elapsed - _hook.BrandSeconds) / BAR_FADE_SECONDS);
+            // A transparent bar colour means the game hides the bar (e.g. its own loading screen follows): hide the track too.
+            if (_barGroup != null) _barGroup.alpha = _hook.BarColor.a <= 0f ? 0f : Mathf.Clamp01((elapsed - _hook.BrandSeconds) / BAR_FADE_SECONDS);
             StartNextPreload();
 
             float target = 1f;
