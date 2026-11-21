@@ -1,6 +1,6 @@
 {
   "name": "com.sketch.sdk",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "displayName": "Sketch SDK",
   "description": "Mobile monetization SDK with ads, consent, analytics, remote config, notifications, push contracts, cross-promotion and revenue telemetry.",
   "unity": "2021.3",

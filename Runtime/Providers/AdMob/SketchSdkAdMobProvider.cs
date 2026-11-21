@@ -48,7 +48,8 @@ namespace Sketch.Sdk
             SketchNativeLayout.DeviceScaleProvider = () => MobileAds.Utils.GetDeviceScale();
         }
 
-        public bool SupportsInAdClose => false;
+        // Android: Sketch custom native layout (SketchAdmobNative.java) draws its own countdown close; elsewhere the GMA template has none.
+        public bool SupportsInAdClose => SketchAndroidNative.Supported;
         public bool IsBannerReady => _banner != null;
         public bool IsNativeReady => IsReady(SketchAdFormat.Native);
         public event Action<float> BannerLayoutChanged;
@@ -163,6 +164,11 @@ namespace Sketch.Sdk
                         return _appOpen != null && _appOpen.CanShowAd();
                     case SketchAdFormat.Banner: return _banner != null;
                     case SketchAdFormat.Native:
+#if UNITY_ANDROID && !UNITY_EDITOR
+                        if (SketchAndroidNative.IsReady) return true;
+                        TryReloadNative();
+                        return false;
+#endif
                         if (_native != null && !_nativeShown && Now - _nativeLoadedAt > NATIVE_MAX_AGE)
                             DestroyNative(0);
                         if (_native == null) TryReloadNative();
@@ -345,6 +351,18 @@ namespace Sketch.Sdk
             // OR-157: one shared helper clamps the rect above the banner and converts it, so the Editor fake draws exactly this rect.
             Rect clamped = SketchNativeInRect.ClampToBanner(request.ScreenRect, Screen.height, BannerHeightPixels);
             if (clamped.width <= 0f || clamped.height <= 0f) return false;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            // Sketch custom native layout (KT ThunderAdmobNative parity): pixel rect, own window, round countdown close.
+            HookJavaNative();
+            _nativeCallbacks = callbacks;
+            if (!SketchAndroidNative.ShowInRect(clamped, request.Placement))
+            {
+                _nativeCallbacks = null;
+                return false;
+            }
+            _nativeShown = true;
+            return true;
+#endif
             bool sizeInPixels = false;
 #if UNITY_ANDROID && !UNITY_EDITOR
             sizeInPixels = true;   // GMA Unity Android custom template: AdSize width/height are pixel LayoutParams, x/y are dp
@@ -372,6 +390,17 @@ namespace Sketch.Sdk
 
         public void HideNative()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            {
+                bool wasShown = _nativeShown;
+                SketchNativeCallbacks callbacks = _nativeCallbacks;
+                _nativeCallbacks = null;
+                _nativeShown = false;
+                SketchAndroidNative.Hide();
+                if (wasShown) callbacks?.Closed(SketchNativeCloseReason.SdkClosed);
+                return;
+            }
+#endif
             if (_native == null) { _nativeCallbacks = null; return; }
             bool wasShown = _nativeShown;
             SketchNativeCallbacks callbacks = _nativeCallbacks;
@@ -412,6 +441,13 @@ namespace Sketch.Sdk
 
         void LoadNative()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            // Java owns loading and its own retry back-off (10/20/40/60 s); C# only re-kicks it now and then.
+            HookJavaNative();
+            _nextNativeLoadAt = Now + RELOAD_BACKOFF;
+            SketchAndroidNative.Load(_config.NativeId);
+            return;
+#endif
             if (_nativeLoading) return;
             _nativeLoading = true;
             _nextNativeLoadAt = Now + RELOAD_BACKOFF;
@@ -538,6 +574,60 @@ namespace Sketch.Sdk
         static ResponseInfo SafeInfo(Func<ResponseInfo> get)
         {
             try { return get(); } catch { return null; }
+        }
+
+        bool _javaNativeHooked;
+
+        void HookJavaNative()
+        {
+            if (_javaNativeHooked) return;
+            _javaNativeHooked = true;
+            SketchAndroidNative.Loaded += () => LogAd("ad_loaded", "native", _config.NativeId);
+            SketchAndroidNative.LoadFailed += payload => LogAd("ad_load_failed", "native", _config.NativeId, "message", payload);
+            SketchAndroidNative.Clicked += () => { LogAd("ad_clicked", "native", _config.NativeId); _nativeCallbacks?.Clicked(); };
+            SketchAndroidNative.Shown += () =>
+            {
+                LogAd("ad_impression", "native", _config.NativeId);
+                _nativeCallbacks?.Shown();
+                SketchAndroidNative.ReleasePlayback();
+                SketchAndroidNative.StartCloseCountdown(SketchNativeClose.COUNTDOWN_SECONDS, SketchNativeClose.CountdownEnabled,
+                    SketchNativeClose.NextOnLeft());
+            };
+            SketchAndroidNative.UserClosed += () =>
+            {
+                LogAd("ad_closed", "native", _config.NativeId);
+                SketchNativeCallbacks callbacks = _nativeCallbacks;
+                _nativeCallbacks = null;
+                _nativeShown = false;
+                callbacks?.Closed(SketchNativeCloseReason.User);
+            };
+            SketchAndroidNative.Paid += ReportJavaNativePaid;
+        }
+
+        // Java payload: micros|currency|precision(0 unknown,1 estimated,2 publisher,3 precise)|responseId|source|placement
+        void ReportJavaNativePaid(string payload)
+        {
+            try
+            {
+                string[] parts = (payload ?? string.Empty).Split('|');
+                if (parts.Length < 3 || !long.TryParse(parts[0], out long micros)) return;
+                string currency = string.IsNullOrEmpty(parts[1]) ? "USD" : parts[1];
+                int.TryParse(parts[2], out int precision);
+                string[] precisions = { "Unknown", "Estimated", "PublisherProvided", "Precise" };
+                _telemetry?.TrackRevenue(new SketchAdRevenue
+                {
+                    Format = "native",
+                    Placement = _telemetry?.PlacementFor("native") ?? "native",
+                    Network = "admob",
+                    Currency = currency,
+                    Precision = precision >= 0 && precision < precisions.Length ? precisions[precision] : precision.ToString(),
+                    ValueMicros = micros,
+                    AdUnitId = _config.NativeId,
+                    ResponseId = parts.Length > 3 ? parts[3] : null,
+                    AdSource = parts.Length > 4 ? parts[4] : null,
+                });
+            }
+            catch (Exception e) { Debug.LogWarning("[SketchAds] Native paid telemetry failed: " + e.Message); }
         }
 
         void ReportPaid(string format, AdValue value, string adUnitId, ResponseInfo info)

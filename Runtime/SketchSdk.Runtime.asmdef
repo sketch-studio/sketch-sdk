@@ -1,7 +1,9 @@
 {
   "name": "SketchSdk.Runtime",
   "rootNamespace": "Sketch.Sdk",
-  "references": [],
+  "references": [
+    "UnityEngine.UI"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

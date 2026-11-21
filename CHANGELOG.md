@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0
+- Native in-rect on Android uses an own Java layout (Plugins/Android/SketchAdmobNative.java): full / half / in-rect modes, round countdown-ring close button (34 dp, top corner, alternating right/left), the ad stays until the player closes it.
+- Editor fake native view draws the same layout and close ring; menu toggle under the Sketch SDK fake menu.
+- New SketchNativeClose rules with tests; the runtime asmdef now references UnityEngine.UI.
+
 ## 1.3.3
 - Splash defaults Bounce-style: minimum 5 s loading, 8 s hard cap, so the cold-start App Open has time to load and shows before the game scene.
 - AppOpenOnColdStart defaults to true; interstitial start delay defaults to 30 s (time-only pacing, 30 s cooldown).

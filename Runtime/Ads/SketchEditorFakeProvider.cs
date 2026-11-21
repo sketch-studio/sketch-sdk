@@ -7,7 +7,7 @@ namespace Sketch.Sdk
     /// Editor stand-in: every format is ready, rewarded grants (house rule, so reward flows are playable),
     /// callbacks arrive on the next frame like a real SDK. Toggle SimulateNoFill to test the "no ad" paths.
     /// </summary>
-    public sealed class SketchEditorFakeProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchBannerLayoutEvents,
+    public sealed class SketchEditorFakeProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchBannerLayoutEvents, ISketchAdCloseCapability,
         ISketchRewardedInterstitialProvider
     {
         public static bool SimulateNoFill;
@@ -84,14 +84,35 @@ namespace Sketch.Sdk
         public bool ShowNativeInRect(SketchNativeRequest request, SketchNativeCallbacks callbacks)
         {
             if (SimulateNoFill) return false;
+#if UNITY_EDITOR
+            if (!SketchEditorNativeView.Enabled) return false;
+#endif
             _native = callbacks;
-            SketchLog.Info($"[FakeAds] Native in rect {request.ScreenRect}.");
+            Rect rect = SketchNativeInRect.ClampToBanner(request.ScreenRect, Screen.height, _bannerVisible ? BannerHeightPixels : 0f);
+            SketchLog.Info($"[FakeAds] Native in rect {rect}.");
+#if UNITY_EDITOR
+            // Same layout + round countdown close as the Android custom native; only the user closes it.
+            SketchEditorNativeView.Show(rect, request.Placement, OnEditorNativeUserClose);
+#endif
             callbacks?.Shown();
             return true;
         }
 
+        void OnEditorNativeUserClose()
+        {
+            var callbacks = _native;
+            _native = null;
+            callbacks?.Closed(SketchNativeCloseReason.User);
+        }
+
+        // In-ad close: the fake draws the same countdown close as the Android layout.
+        public bool SupportsInAdClose => true;
+
         public void HideNative()
         {
+#if UNITY_EDITOR
+            SketchEditorNativeView.Close();
+#endif
             var callbacks = _native;
             _native = null;
             callbacks?.Closed(SketchNativeCloseReason.SdkClosed);
