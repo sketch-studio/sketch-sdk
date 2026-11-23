@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -26,6 +27,18 @@ namespace Sketch.Sdk.Installer
         public static bool TryGetInstalled(out SketchSemVer installed)
         {
             return SketchSemVer.TryParse(SketchInstallManifest.Read(SketchInstallerPaths.MANIFEST_PATH).Stamp, out installed);
+        }
+
+        public static void InstallBatch()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            int index = Array.IndexOf(args, "-sketchSdkInstallTag");
+            if (!Application.isBatchMode || index < 0 || index + 1 >= args.Length ||
+                !SketchSemVer.TryParse(args[index + 1], out SketchSemVer version))
+                throw new ArgumentException("Batch installation requires -sketchSdkInstallTag vX.Y.Z.");
+
+            if (!SketchPackageInstaller.Install(version, backupLocalEditsWithoutPrompt: true))
+                throw new InvalidOperationException("Sketch SDK installation failed. See the Unity log.");
         }
 
         [MenuItem("Sketch SDK/Check For Updates", priority = 60)]

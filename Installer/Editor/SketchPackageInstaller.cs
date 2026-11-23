@@ -16,7 +16,7 @@ namespace Sketch.Sdk.Installer
     {
         public static bool IsBusy { get; private set; }
 
-        public static bool Install(SketchSemVer version)
+        public static bool Install(SketchSemVer version, bool backupLocalEditsWithoutPrompt = false)
         {
             if (IsBusy) return false;
             if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -39,7 +39,7 @@ namespace Sketch.Sdk.Installer
                 List<string> removed = CollectRemoved(old, incoming);
                 List<string> conflicts = CollectConflicts(old, incoming, removed);
 
-                if (conflicts.Count > 0 && !ConfirmOverwrite(conflicts)) return false;
+                if (conflicts.Count > 0 && !backupLocalEditsWithoutPrompt && !ConfirmOverwrite(conflicts)) return false;
 
                 AssetDatabase.DisallowAutoRefresh();
                 refreshBlocked = true;
@@ -70,7 +70,8 @@ namespace Sketch.Sdk.Installer
             catch (Exception e)
             {
                 Debug.LogError("[SketchSdkInstaller] Install of " + tag + " failed: " + e.Message);
-                EditorUtility.DisplayDialog("Sketch SDK", "Install of " + tag + " failed:\n" + e.Message + "\n\nThe install manifest was not updated; run it again when fixed.", "OK");
+                if (!Application.isBatchMode)
+                    EditorUtility.DisplayDialog("Sketch SDK", "Install of " + tag + " failed:\n" + e.Message + "\n\nThe install manifest was not updated; run it again when fixed.", "OK");
                 return false;
             }
             finally
