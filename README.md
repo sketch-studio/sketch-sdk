@@ -2,7 +2,20 @@
 
 > **Documentation / Tài liệu:** open the [bilingual product site](docs/index.html) for the complete feature map, architecture, API entry points and integration flow.
 
-One Unity package for mobile monetization, modeled on Bounce SDK but **AdMob only** (no AppLovin MAX):
+One Unity package for mobile monetization. Choose AdMob, Unity LevelPlay, AppLovin MAX, or Liftoff Monetize as the app's ad provider.
+
+In **Sketch SDK > Manager > Ads**, select the provider and enter each platform's placement IDs. AdMob is the default for existing settings assets. Each standalone provider requires its vendor SDK. Install the provider and any mediation-network adapters using the vendor's package manager.
+
+| Provider | Unity dependency | Configured ad formats |
+| --- | --- | --- |
+| AdMob | Google Mobile Ads Unity | Banner, interstitial, rewarded, rewarded interstitial, app open, native |
+| LevelPlay | `com.unity.services.levelplay` 9.6.0+ | Banner, interstitial, rewarded |
+| AppLovin MAX | `com.applovin.mediation.ads` 8.6.6+ | Banner or MREC, interstitial, rewarded, app open |
+| Liftoff Monetize | `io.liftoff.vungleads` 7.1.2+ | Banner, interstitial, rewarded |
+
+Set the MAX SDK key through AppLovin Integration Manager. Configure mediation and test devices in the selected vendor's tools. Google test ad IDs apply to AdMob only. For AdMob mediation with Liftoff, install Google's Liftoff mediation adapter and keep AdMob selected.
+
+For iOS ATT managed by Sketch SDK, install `com.unity.ads.ios-support` 1.3.0+ and set the tracking purpose in the Consent tab. For Firebase push, install `com.google.firebase.messaging` 14.1.0, configure FCM registration and subscribe to `SketchFirebaseMessaging.RegistrationReceived` and `MessageReceived`. Call `SketchFirebaseMessaging.Start` after the game's notification permission flow.
 
 - **Ads (Google AdMob):** banner, interstitial, rewarded, rewarded interstitial, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
 - **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads with a configurable scope (`Pacing.RemoveAdsBlocks`, default: interstitial, app open, banner and native off; rewarded always kept). All overridable from remote config without a new build.

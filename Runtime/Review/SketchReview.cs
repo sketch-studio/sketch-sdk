@@ -40,7 +40,7 @@ namespace Sketch.Sdk
             set => _store = value;
         }
 
-        /// <summary>Registered by the PlayReview module on Android; the Editor uses a logging fake. Null = store page.</summary>
+        /// <summary>Platform review provider. The Editor uses a logging fake. Null opens the store page.</summary>
         public static ISketchReviewProvider Provider
         {
             get
@@ -154,6 +154,17 @@ namespace Sketch.Sdk
         static int Sessions() => (SessionSource ?? DefaultSessions)();
         static double DefaultClock() => SketchIdentity.NowUnix;
         static int DefaultSessions() => SketchIdentity.Session;
+
+#if UNITY_IOS && !UNITY_EDITOR
+        sealed class IosReviewProvider : ISketchReviewProvider
+        {
+            public void RequestReview(Action<bool> done) =>
+                done?.Invoke(UnityEngine.iOS.Device.RequestStoreReview());
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+        static void RegisterIosProvider() => Provider = new IosReviewProvider();
+#endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()

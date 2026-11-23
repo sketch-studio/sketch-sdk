@@ -1,0 +1,14 @@
+{
+  "name": "SketchSdk.AppTrackingTransparency",
+  "rootNamespace": "Sketch.Sdk",
+  "references": ["SketchSdk.Runtime", "Unity.Advertisement.IosSupport"],
+  "includePlatforms": ["iOS"],
+  "defineConstraints": ["SKETCHSDK_IOS_SUPPORT"],
+  "versionDefines": [
+    {
+      "name": "com.unity.ads.ios-support",
+      "expression": "1.3.0",
+      "define": "SKETCHSDK_IOS_SUPPORT"
+    }
+  ]
+}

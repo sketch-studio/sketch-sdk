@@ -1,0 +1,15 @@
+{
+  "name": "SketchSdk.FirebaseMessaging",
+  "rootNamespace": "Sketch.Sdk",
+  "references": ["SketchSdk.Runtime"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Firebase.App.dll", "Firebase.Messaging.dll"],
+  "defineConstraints": ["SKETCHSDK_FIREBASE_MESSAGING"],
+  "versionDefines": [
+    {
+      "name": "com.google.firebase.messaging",
+      "expression": "14.1.0",
+      "define": "SKETCHSDK_FIREBASE_MESSAGING"
+    }
+  ]
+}

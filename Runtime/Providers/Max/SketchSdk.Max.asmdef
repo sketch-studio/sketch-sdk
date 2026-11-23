@@ -1,0 +1,13 @@
+{
+  "name": "SketchSdk.Max",
+  "rootNamespace": "Sketch.Sdk",
+  "references": ["SketchSdk.Runtime", "MaxSdk.Scripts"],
+  "defineConstraints": ["SKETCHSDK_MAX"],
+  "versionDefines": [
+    {
+      "name": "com.applovin.mediation.ads",
+      "expression": "8.6.6",
+      "define": "SKETCHSDK_MAX"
+    }
+  ]
+}

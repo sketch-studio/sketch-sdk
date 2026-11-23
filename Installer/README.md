@@ -9,7 +9,7 @@ https://github.com/sketch-studio/sketch-sdk.git?path=/Installer#v1.3.0
 ```
 
 - Checks the newest `vX.Y.Z` tag once per editor session (`git ls-remote`, needs git on PATH) and offers Install / Update.
-- Copies `Runtime`, `Editor`, `Tests`, `Splash`, `README.md`, `CHANGELOG.md`, `package.json` and their `.meta` files.
+- Copies `Runtime`, `Editor`, `Tests`, `Splash`, `Plugins`, `README.md`, `CHANGELOG.md`, `package.json` and their `.meta` files.
 - `Assets/SketchSdk/.sketch-install.txt` = installed tag + owned files + SHA1. Locally edited owned files are backed up to `Assets/SketchSdk~backup/<timestamp>/` after a confirm dialog.
 - Never touches non-owned files, `SketchSdkSettings` or `SketchSplashHook`.
 - After install: removes an old `com.sketch.sdk` entry from `Packages/manifest.json`, resolves packages, builds the splash scene if missing and puts it at build index 0.

@@ -12,7 +12,7 @@ namespace Sketch.Sdk.Installer
         public const string UPM_PACKAGE_NAME = "com.sketch.sdk";
 
         // Folders and files copied from the package root. Samples~, Tests~, Installer, docs stay out.
-        public static readonly string[] PAYLOAD_DIRECTORIES = { "Runtime", "Editor", "Tests", "Splash" };
+        public static readonly string[] PAYLOAD_DIRECTORIES = { "Runtime", "Editor", "Tests", "Splash", "Plugins" };
         public static readonly string[] PAYLOAD_FILES = { "README.md", "CHANGELOG.md", "package.json" };
 
         public const string SESSION_DECLINED = "SketchSdkInstaller.DeclinedTag";

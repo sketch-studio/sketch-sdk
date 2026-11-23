@@ -1,0 +1,13 @@
+{
+  "name": "SketchSdk.Liftoff",
+  "rootNamespace": "Sketch.Sdk",
+  "references": ["SketchSdk.Runtime", "io.liftoff.vungleads.Runtime"],
+  "defineConstraints": ["SKETCHSDK_LIFTOFF"],
+  "versionDefines": [
+    {
+      "name": "io.liftoff.vungleads",
+      "expression": "7.1.2",
+      "define": "SKETCHSDK_LIFTOFF"
+    }
+  ]
+}

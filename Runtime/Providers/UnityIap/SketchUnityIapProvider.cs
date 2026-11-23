@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Purchasing;
+#if UNITY_ANDROID && !UNITY_EDITOR
+using UnityEngine.Purchasing.Security;
+#endif
 
 namespace Sketch.Sdk
 {
@@ -18,6 +21,9 @@ namespace Sketch.Sdk
         readonly Dictionary<string, Product> _products = new Dictionary<string, Product>(StringComparer.Ordinal);
         readonly Dictionary<string, PendingOrder> _pending = new Dictionary<string, PendingOrder>(StringComparer.Ordinal);
         readonly HashSet<string> _owned = new HashSet<string>(StringComparer.Ordinal);
+#if UNITY_ANDROID && !UNITY_EDITOR
+        readonly CrossPlatformValidator _googleValidator;
+#endif
         PurchasingController _controller;
         SketchIapCatalog _catalog;
         string _storeName;
@@ -30,6 +36,18 @@ namespace Sketch.Sdk
         public event Action<SketchStoreOrder> OrderReceived;
         public event Action<string, SketchIapResultStatus, string> PurchaseFailed;
         public event Action<string> PurchaseDeferred;
+
+        public SketchUnityIapProvider() { }
+
+        /// <summary>Opt into Google Play receipt verification with the app's public key bytes.</summary>
+        public SketchUnityIapProvider(byte[] googlePublicKey)
+        {
+            if (googlePublicKey == null || googlePublicKey.Length == 0)
+                throw new ArgumentException("A Google Play public key is required.", nameof(googlePublicKey));
+#if UNITY_ANDROID && !UNITY_EDITOR
+            _googleValidator = new CrossPlatformValidator(googlePublicKey, Application.identifier);
+#endif
+        }
 
         public void Initialize(SketchIapCatalog catalog, Action<bool> onInitialized)
         {
@@ -167,8 +185,9 @@ namespace Sketch.Sdk
                 if (!TrySingleItem(confirmed, out CartItem item)) continue;
                 if (item.Product.type != ProductType.NonConsumable && item.Product.type != ProductType.Subscription) continue;
                 if (string.IsNullOrWhiteSpace(confirmed.Info?.TransactionID)) continue;
-                _owned.Add(item.Product.uSku);
                 SketchStoreOrder order = ToOrder(confirmed, item);
+                if (!ReceiptValid(order, item.Product.definition.storeSpecificId)) continue;
+                _owned.Add(item.Product.uSku);
                 order.IsRestore = true;
                 order.NeedsConfirmation = false;
                 RaiseOrder(order);
@@ -190,11 +209,42 @@ namespace Sketch.Sdk
                 SketchLog.Warn("Unity IAP pending order without a transaction id or with several lines; left unconfirmed.");
                 return;
             }
-            _pending[transactionId] = pending;
             SketchStoreOrder order = ToOrder(pending, item);
+            if (!ReceiptValid(order, item.Product.definition.storeSpecificId))
+            {
+                RaiseFailed(order.ProductId, SketchIapResultStatus.Failed, "invalid_receipt");
+                return;
+            }
+            _pending[transactionId] = pending;
             order.IsRestore = item.Product.appleProductIsRestored;
             order.NeedsConfirmation = true;
             RaiseOrder(order);
+        }
+
+        bool ReceiptValid(SketchStoreOrder order, string storeProductId)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (_googleValidator == null || _storeName != GooglePlay.Name) return true;
+            if (!string.IsNullOrEmpty(order.Receipt))
+            {
+                try
+                {
+                    foreach (IPurchaseReceipt receipt in _googleValidator.Validate(order.Receipt))
+                    {
+                        if (receipt is GooglePlayReceipt google &&
+                            google.purchaseState == GooglePurchaseState.Purchased &&
+                            string.Equals(google.productID, storeProductId, StringComparison.Ordinal) &&
+                            string.Equals(google.transactionID, order.TransactionId, StringComparison.Ordinal))
+                            return true;
+                    }
+                }
+                catch (IAPSecurityException) { }
+            }
+            SketchLog.Warn("Google Play receipt validation failed; purchase left unconfirmed.");
+            return false;
+#else
+            return true;
+#endif
         }
 
         void OnPurchaseConfirmed(string storeName, Order order)

@@ -16,6 +16,8 @@ namespace Sketch.Sdk.Editor
         public static readonly string[] DRAWN_FIELDS =
         {
             "AutoInitialize", "VerboseLogs", "Android", "Ios", "TestAdsInDevelopmentBuild", "ForceTestAds", "TestDeviceIds",
+            "AdsBackend", "LevelPlayAndroid", "LevelPlayIos", "MaxAndroid", "MaxIos", "LiftoffAndroid", "LiftoffIos",
+            "IosTrackingUsageDescription", "PrivacyPolicyUrl",
             "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
@@ -268,6 +270,31 @@ namespace Sketch.Sdk.Editor
         {
             DrawChecks(SketchSetupChecklist.AREA_ADS, "ads_status");
 
+            if (SketchEditorStyles.Section("ads_provider", "Ads provider"))
+            {
+                Field("AdsBackend", "Provider", "Choose which SDK serves ads in this game.");
+                _platform = GUILayout.Toolbar(_platform, new[] { "Android", "iOS" }, GUILayout.Height(22));
+                string platformSuffix = _platform == 0 ? "Android" : "Ios";
+                switch ((SketchAdsBackend)_so.FindProperty("AdsBackend").intValue)
+                {
+                    case SketchAdsBackend.LevelPlay:
+                        EditorGUILayout.PropertyField(_so.FindProperty("LevelPlay" + platformSuffix), true);
+                        break;
+                    case SketchAdsBackend.Max:
+                        SketchEditorStyles.Help("Set your SDK key in AppLovin Integration Manager.");
+                        EditorGUILayout.PropertyField(_so.FindProperty("Max" + platformSuffix), true);
+                        break;
+                    case SketchAdsBackend.Liftoff:
+                        string root = "Liftoff" + platformSuffix;
+                        Field(root + ".AppId", "App ID", "Liftoff Monetize application ID.");
+                        Field(root + ".Banner", "Banner placement", "Bottom banner placement ID.");
+                        Field(root + ".Interstitial", "Interstitial placement", "Interstitial placement ID.");
+                        Field(root + ".Rewarded", "Rewarded placement", "Rewarded placement ID.");
+                        break;
+                }
+                SketchEditorStyles.EndSection();
+            }
+
             if (SketchEditorStyles.Section("ads_ids", "AdMob ids"))
             {
                 SketchEditorStyles.Help("App ID has '~' (ca-app-pub-XXXX~YYYY). Ad unit ids have '/' (ca-app-pub-XXXX/YYYY). Leave a format empty to turn it off.");
@@ -283,6 +310,16 @@ namespace Sketch.Sdk.Editor
                 IdField(root + ".RewardedInterstitial", "Rewarded Interstitial", false, "Fullscreen reward ad; needs an intro screen with opt-out.");
                 GUILayout.Space(2);
                 if (GUILayout.Button("Open AdMob console", GUILayout.Width(150))) Application.OpenURL(ADMOB_URL);
+                SketchEditorStyles.EndSection();
+            }
+
+            if (SketchEditorStyles.Section("ads_mediation", "AdMob mediation adapters"))
+            {
+                SketchEditorStyles.Help("Install the networks used by this game. Updating an adapter can update shared dependencies such as Google Mobile Ads.");
+                var packages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages();
+                DrawMediationAdapter(packages, "Liftoff Monetize", "liftoffmonetize");
+                DrawMediationAdapter(packages, "Unity Ads", "unityads");
+                DrawMediationAdapter(packages, "Mintegral", "mintegral");
                 SketchEditorStyles.EndSection();
             }
 
@@ -337,6 +374,23 @@ namespace Sketch.Sdk.Editor
             }
         }
 
+
+        static void DrawMediationAdapter(UnityEditor.PackageManager.PackageInfo[] packages, string label, string suffix)
+        {
+            string packageName = "com.google.ads.mobile.mediation." + suffix;
+            var package = Array.Find(packages, item => item.name == packageName);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(label, package?.version ?? "Not installed");
+            using (new EditorGUI.DisabledScope(SketchGmaInstaller.IsBusy || EditorApplication.isPlayingOrWillChangePlaymode))
+            {
+                if (GUILayout.Button(package == null ? "Install" : "Update", GUILayout.Width(70)))
+                    SketchGmaInstaller.ChangeMediationAdapter(packageName, false);
+                using (new EditorGUI.DisabledScope(package == null || !package.isDirectDependency))
+                    if (GUILayout.Button("Remove", GUILayout.Width(70)))
+                        SketchGmaInstaller.ChangeMediationAdapter(packageName, true);
+            }
+            EditorGUILayout.EndHorizontal();
+        }
 
         void DrawIap()
         {
@@ -587,6 +641,8 @@ namespace Sketch.Sdk.Editor
             if (SketchEditorStyles.Section("cs_ump", "Consent (Google UMP)"))
             {
                 Field("RequestConsent", "Request consent", "Ask GDPR / US-state consent before ads. Create the message in AdMob > Privacy & messaging.");
+                Field("IosTrackingUsageDescription", "iOS tracking purpose", "Leave empty when the mediation CMP handles ATT.");
+                Field("PrivacyPolicyUrl", "Privacy policy URL", "Used by the game's privacy entry.");
                 Field("ConsentDebugGeography", "Debug geography", "Pretend the device is in this region to test the form (development builds only).");
                 SketchEditorStyles.EndSection();
             }

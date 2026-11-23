@@ -1,0 +1,13 @@
+{
+  "name": "SketchSdk.LevelPlay",
+  "rootNamespace": "Sketch.Sdk",
+  "references": ["SketchSdk.Runtime", "Unity.LevelPlay"],
+  "defineConstraints": ["SKETCHSDK_LEVELPLAY"],
+  "versionDefines": [
+    {
+      "name": "com.unity.services.levelplay",
+      "expression": "9.6.0",
+      "define": "SKETCHSDK_LEVELPLAY"
+    }
+  ]
+}

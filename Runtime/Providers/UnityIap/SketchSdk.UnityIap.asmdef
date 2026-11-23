@@ -3,7 +3,9 @@
   "rootNamespace": "Sketch.Sdk",
   "references": [
     "SketchSdk.Runtime",
-    "Unity.Purchasing"
+    "Unity.Purchasing",
+    "Unity.Purchasing.Security",
+    "Unity.Purchasing.SecurityCore"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -18,9 +18,54 @@ namespace Sketch.Sdk.Editor
         const string REGISTRY_URL = "https://package.openupm.com";
         const string GMA_PACKAGE = "com.google.ads.mobile";
         static AddRequest _request;
+        static AddRequest _adapterAdd;
+        static RemoveRequest _adapterRemove;
+        static string _adapterName;
+
+        internal static bool IsBusy => _request != null || _adapterAdd != null || _adapterRemove != null;
+
+        internal static void ChangeMediationAdapter(string packageName, bool remove)
+        {
+            if (IsBusy || EditorApplication.isPlayingOrWillChangePlaymode) return;
+            try
+            {
+                if (remove)
+                {
+                    if (!EditorUtility.DisplayDialog("Remove mediation adapter", "Remove " + packageName + " from this Unity project?", "Remove", "Cancel")) return;
+                    _adapterRemove = Client.Remove(packageName);
+                }
+                else
+                {
+                    EnsureScopedRegistry();
+                    _adapterAdd = Client.Add(packageName);
+                }
+                _adapterName = packageName;
+                EditorApplication.update += PollAdapter;
+            }
+            catch (Exception error)
+            {
+                Debug.LogError("[SketchSdk] Mediation adapter request failed: " + error.Message);
+            }
+        }
+
+        static void PollAdapter()
+        {
+            Request request = _adapterAdd != null ? (Request)_adapterAdd : _adapterRemove;
+            if (request == null || !request.IsCompleted) return;
+            EditorApplication.update -= PollAdapter;
+            if (request.Status == StatusCode.Success)
+                Debug.Log("[SketchSdk] " + (_adapterAdd != null ? "Installed " + _adapterAdd.Result.packageId : "Removed " + _adapterName));
+            else
+                Debug.LogError("[SketchSdk] " + _adapterName + ": " + request.Error?.message);
+            _adapterAdd = null;
+            _adapterRemove = null;
+            foreach (var window in Resources.FindObjectsOfTypeAll<SketchSdkSettingsWindow>())
+                window.Repaint();
+        }
 
         public static void Install()
         {
+            if (IsBusy) return;
             if (SketchSdkEditorUtil.IsGoogleMobileAdsInstalled)
             {
                 EditorUtility.DisplayDialog("Sketch SDK", "Google Mobile Ads is already installed.", "OK");

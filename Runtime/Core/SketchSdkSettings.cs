@@ -35,6 +35,28 @@ namespace Sketch.Sdk
         [Tooltip("Number, true/false, text or JSON")] public string Value = "";
     }
 
+    public enum SketchAdsBackend { AdMob = 0, LevelPlay = 1, Max = 2, Liftoff = 3 }
+
+    [Serializable]
+    public sealed class SketchLevelPlaySettings
+    {
+        public string AppKey = "";
+        public string Banner = "";
+        public string Interstitial = "";
+        public string Rewarded = "";
+    }
+
+    [Serializable]
+    public sealed class SketchMaxSettings
+    {
+        public string Banner = "";
+        public string Mrec = "";
+        public bool UseMrec;
+        public string Interstitial = "";
+        public string Rewarded = "";
+        public string AppOpen = "";
+    }
+
     public enum SketchConsentDebugGeography { Disabled = 0, EEA = 1, NotEEA = 2 }
 
     /// <summary>
@@ -51,6 +73,15 @@ namespace Sketch.Sdk
         public bool AutoInitialize = true;
         [Tooltip("Extra [SketchSdk] logs in Editor and development builds.")]
         public bool VerboseLogs = true;
+
+        [Header("Ads provider")]
+        public SketchAdsBackend AdsBackend = SketchAdsBackend.AdMob;
+        public SketchLevelPlaySettings LevelPlayAndroid = new SketchLevelPlaySettings();
+        public SketchLevelPlaySettings LevelPlayIos = new SketchLevelPlaySettings();
+        public SketchAdUnitIds LiftoffAndroid = new SketchAdUnitIds();
+        public SketchAdUnitIds LiftoffIos = new SketchAdUnitIds();
+        public SketchMaxSettings MaxAndroid = new SketchMaxSettings();
+        public SketchMaxSettings MaxIos = new SketchMaxSettings();
 
         [Header("AdMob")]
         public SketchAdUnitIds Android = new SketchAdUnitIds();
@@ -75,6 +106,8 @@ namespace Sketch.Sdk
         [Header("Consent (Google UMP)")]
         [Tooltip("Ask GDPR/US-state consent with Google's User Messaging Platform before ads. Create the message in AdMob > Privacy & messaging.")]
         public bool RequestConsent = true;
+        [Tooltip("iOS ATT purpose text. Leave empty to let your app or mediation CMP handle ATT.")]
+        public string IosTrackingUsageDescription = "";
         [Tooltip("Pretend the device is in this region (development builds only) to test the consent form.")]
         public SketchConsentDebugGeography ConsentDebugGeography = SketchConsentDebugGeography.Disabled;
         [Tooltip("The game's privacy policy page. Must be the exact URL set in Play Console > App content and in AdMob app settings.")]

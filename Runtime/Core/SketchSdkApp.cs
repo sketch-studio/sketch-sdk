@@ -74,7 +74,23 @@ namespace Sketch.Sdk
                 TagForUnderAgeOfConsent = settings.UnderAgeOfConsent == SketchAdMobTag.True,
             };
             // Every consent outcome converges on ONE ads start (Bounce Thunder_AdmobManager rule).
-            SketchConsent.Gather(consent, request, () => StartAds(settings));
+            SketchConsent.Gather(consent, request, () => StartAfterTrackingAuthorization(settings));
+        }
+
+        static void StartAfterTrackingAuthorization(SketchSdkSettings settings)
+        {
+            Action<Action> request = SketchSdkModules.RequestTrackingAuthorization;
+            if (request == null || string.IsNullOrWhiteSpace(settings.IosTrackingUsageDescription))
+            {
+                StartAds(settings);
+                return;
+            }
+            try { request(() => StartAds(settings)); }
+            catch (Exception error)
+            {
+                SketchLog.Warn("Tracking authorization failed: " + error.Message);
+                StartAds(settings);
+            }
         }
 
         static bool _adsStarted;
@@ -99,7 +115,7 @@ namespace Sketch.Sdk
             Step("ads provider", () => provider = CreateAdsProvider(settings));
             if (provider == null)
             {
-                SketchLog.Warn("No ads provider: install Google Mobile Ads (menu Sketch SDK > Settings) and fill the AdMob ids.");
+                SketchLog.Warn($"No ads provider for {settings.AdsBackend}. Check the vendor package and ad settings.");
                 MarkReady();
                 return;
             }
@@ -149,8 +165,7 @@ namespace Sketch.Sdk
 #if UNITY_EDITOR
             return new SketchEditorFakeProvider();
 #else
-            if (SketchSdkModules.AdsProviderFactory == null) return null;
-            return SketchSdkModules.AdsProviderFactory(settings, telemetry);
+            return SketchSdkModules.CreateAdsProvider(settings, telemetry);
 #endif
         }
 
