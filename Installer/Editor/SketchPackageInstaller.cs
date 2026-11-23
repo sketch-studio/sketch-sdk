@@ -211,9 +211,11 @@ namespace Sketch.Sdk.Installer
             return empty;
         }
 
-        /// <summary>Never owned, never written or deleted: game settings and the splash hook.</summary>
+        /// <summary>Never owned, written or deleted: game settings, splash hook and generated splash scene.</summary>
         public static bool IsProtected(string rel)
         {
+            if (string.Equals(rel, SketchInstallerPaths.SPLASH_SCENE_RELATIVE_PATH, StringComparison.Ordinal) ||
+                string.Equals(rel, SketchInstallerPaths.SPLASH_SCENE_RELATIVE_PATH + ".meta", StringComparison.Ordinal)) return true;
             if (rel.IndexOf("Resources/", StringComparison.Ordinal) < 0) return false;
             string name = Path.GetFileName(rel);
             return name.StartsWith("SketchSdkSettings", StringComparison.Ordinal)

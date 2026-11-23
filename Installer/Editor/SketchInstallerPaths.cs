@@ -7,7 +7,8 @@ namespace Sketch.Sdk.Installer
         public const string INSTALL_ROOT = "Assets/SketchSdk";
         public const string MANIFEST_PATH = INSTALL_ROOT + "/.sketch-install.txt";
         public const string BACKUP_ROOT = "Assets/SketchSdk~backup";
-        public const string SPLASH_SCENE_PATH = INSTALL_ROOT + "/Splash/SketchSplash.unity";
+        public const string SPLASH_SCENE_RELATIVE_PATH = "Splash/SketchSplash.unity";
+        public const string SPLASH_SCENE_PATH = INSTALL_ROOT + "/" + SPLASH_SCENE_RELATIVE_PATH;
         public const string BUILD_SPLASH_MENU = "Sketch SDK/Build Splash Scene";
         public const string UPM_PACKAGE_NAME = "com.sketch.sdk";
 
