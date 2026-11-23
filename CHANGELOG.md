@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.6
+- Detect manually imported AdMob mediation adapters before installing a duplicate through Package Manager.
+- Cover concurrent consent refresh and duplicate provider callbacks in PlayMode.
+
 ## 1.5.5
 - Allow games to preserve the interstitial cooldown when a rewarded ad closes. App-open spacing still accounts for fullscreen ads.
 
