@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using NUnit.Framework;
 using UnityEngine;
@@ -264,6 +266,47 @@ namespace Sketch.Sdk.Tests
             worker.Join();
             yield return Frames(2);
             Assert.IsTrue(ranOnMain);
+        }
+
+        [UnityTest]
+        public IEnumerator ConsentRefresh_ConcurrentRequestsShareOneProviderCall()
+        {
+            yield return WaitReady();
+            var gather = typeof(SketchConsent).GetMethod("Gather", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(gather);
+            var provider = new DeferredConsentProvider();
+            try
+            {
+                gather.Invoke(null, new object[] { provider, new SketchConsentRequest(), null });
+                provider.Complete();
+                int completed = 0;
+                Assert.IsTrue(SketchConsent.Refresh(() => completed++));
+                Assert.IsTrue(SketchConsent.Refresh(() => completed++));
+                Assert.AreEqual(2, provider.Calls, "one initial call and one shared refresh");
+                var finish = provider.Complete;
+                finish();
+                finish();
+                yield return Frames(1);
+                Assert.AreEqual(2, completed);
+            }
+            finally { gather.Invoke(null, new object[] { null, null, null }); }
+        }
+
+        sealed class DeferredConsentProvider : ISketchConsentProvider
+        {
+            public int Calls { get; private set; }
+            public Action Complete { get; private set; }
+            public bool CanRequestAds => true;
+            public bool IsPrivacyOptionsRequired => false;
+
+            public void Gather(SketchConsentRequest request, Action onDone)
+            {
+                Calls++;
+                Complete = onDone;
+            }
+
+            public void ShowPrivacyOptions(Action<string> onClosed) => onClosed?.Invoke(null);
+            public void Reset() { }
         }
 
         [UnityTest]
