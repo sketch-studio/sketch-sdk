@@ -174,7 +174,8 @@ namespace Sketch.Sdk
 #if UNITY_EDITOR
             return null;
 #else
-            if (!settings.RequestConsent || SketchSdkModules.ConsentProviderFactory == null) return null;
+            if (!settings.RequestConsent || settings.AdsBackend != SketchAdsBackend.AdMob ||
+                SketchSdkModules.ConsentProviderFactory == null) return null;
             return SketchSdkModules.ConsentProviderFactory(settings);
 #endif
         }

@@ -150,6 +150,23 @@ namespace Sketch.Sdk.Tests
             StringAssert.Contains("\"sketch_inter_cooldown\": 30", SketchRemoteKeyCatalog.DefaultsJson(keys));
         }
 
+        [TestCase(SketchAdsBackend.LevelPlay)]
+        [TestCase(SketchAdsBackend.Max)]
+        [TestCase(SketchAdsBackend.Liftoff)]
+        public void StandaloneProviderDoesNotRequireAdMob(SketchAdsBackend backend)
+        {
+            var settings = UnityEngine.ScriptableObject.CreateInstance<SketchSdkSettings>();
+            try
+            {
+                settings.AdsBackend = backend;
+                var facts = new SketchSetupFacts { LevelPlayInstalled = true, MaxInstalled = true, LiftoffInstalled = true };
+                var checks = SketchSetupChecklist.Build(settings, facts);
+                Assert.IsTrue(checks.Exists(item => item.Label == backend + " provider" && item.Status == SketchCheckStatus.Ok));
+                Assert.IsFalse(checks.Exists(item => item.Label == "Google Mobile Ads plugin"));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(settings); }
+        }
+
         [Test]
         public void SettingsWindow_DrawsEverySerializedField()
         {

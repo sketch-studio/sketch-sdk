@@ -24,6 +24,7 @@ namespace Sketch.Sdk.Editor
     {
         public bool SettingsLoadableAtRuntime;
         public bool GoogleMobileAdsInstalled, UmpInstalled, AdMobDefineActive;
+        public bool LevelPlayInstalled, MaxInstalled, LiftoffInstalled;
         public bool FirebaseAnalyticsInstalled, FirebaseRemoteConfigInstalled, UnityIapInstalled;
         public bool IapProductCatalogJson, GoogleServicesJson, FirebaseAndroidLib;
         public int SketchIapCatalogs, SketchIapProducts;
@@ -53,19 +54,36 @@ namespace Sketch.Sdk.Editor
                 ? Ok(AREA_GENERAL, "Settings asset", "Loaded from Resources at runtime.")
                 : new SketchCheckItem(AREA_GENERAL, "Settings asset", SketchCheckStatus.Error, "Must be Assets/SketchSdk/Resources/SketchSdkSettings.asset or the game runs without ids."));
 
-            // ---------------- Ads ----------------
-            items.Add(f.GoogleMobileAdsInstalled && f.UmpInstalled
+            if (s.AdsBackend == SketchAdsBackend.AdMob)
+            {
+                items.Add(f.GoogleMobileAdsInstalled && f.UmpInstalled
                 ? Ok(AREA_ADS, "Google Mobile Ads plugin", "Installed (with UMP).")
                 : new SketchCheckItem(AREA_ADS, "Google Mobile Ads plugin", SketchCheckStatus.Error, "Not installed: no real ads on device. Menu Sketch SDK > Install Google Mobile Ads."));
-            if (f.GoogleMobileAdsInstalled)
-                items.Add(f.AdMobDefineActive
+                if (f.GoogleMobileAdsInstalled)
+                    items.Add(f.AdMobDefineActive
                     ? Ok(AREA_ADS, "SKETCHSDK_ADMOB define", "Set for Android and iOS.")
                     : new SketchCheckItem(AREA_ADS, "SKETCHSDK_ADMOB define", SketchCheckStatus.Warning, "Not set. Press Save & Verify."));
-            CheckPlatform(items, "Android", s.Android);
-            CheckPlatform(items, "iOS", s.Ios);
-            items.Add(s.ForceTestAds
+                CheckPlatform(items, "Android", s.Android);
+                CheckPlatform(items, "iOS", s.Ios);
+                items.Add(s.ForceTestAds
                 ? new SketchCheckItem(AREA_ADS, "Test ads off in release", SketchCheckStatus.Error, "Force Test Ads is ON: a release build earns nothing. Turn it off.")
                 : Ok(AREA_ADS, "Test ads off in release", s.TestAdsInDevelopmentBuild ? "Release uses real ids; Editor and dev builds use Google test ads." : "Real ids everywhere (dev builds too: careful with your AdMob account)."));
+
+            }
+            else
+            {
+                bool installed = s.AdsBackend switch
+                {
+                    SketchAdsBackend.LevelPlay => f.LevelPlayInstalled,
+                    SketchAdsBackend.Max => f.MaxInstalled,
+                    SketchAdsBackend.Liftoff => f.LiftoffInstalled,
+                    _ => false
+                };
+                string label = s.AdsBackend + " provider";
+                items.Add(installed
+                    ? Ok(AREA_ADS, label, "Vendor adapter compiled.")
+                    : new SketchCheckItem(AREA_ADS, label, SketchCheckStatus.Error, "Install the selected provider's Unity package."));
+            }
 
             // ---------------- IAP ----------------
             bool sellsSomething = f.SketchIapProducts > 0;
@@ -123,7 +141,9 @@ namespace Sketch.Sdk.Editor
                 items.Add(Ok(AREA_SERVER, "Sketch Server", "Enabled with URL, App Id and API key."));
 
             // ---------------- Consent ----------------
-            if (s.RequestConsent && f.GoogleMobileAdsInstalled && !f.UmpInstalled)
+            if (s.AdsBackend != SketchAdsBackend.AdMob)
+                items.Add(new SketchCheckItem(AREA_CONSENT, "Consent", SketchCheckStatus.Info, "Configure the consent flow for the selected provider."));
+            else if (s.RequestConsent && f.GoogleMobileAdsInstalled && !f.UmpInstalled)
                 items.Add(new SketchCheckItem(AREA_CONSENT, "Consent (UMP)", SketchCheckStatus.Warning, "Request Consent is ON but the UMP plugin is missing."));
             else if (s.ConsentDebugGeography != SketchConsentDebugGeography.Disabled)
                 items.Add(new SketchCheckItem(AREA_CONSENT, "Consent (UMP)", SketchCheckStatus.Info, "Debug geography " + s.ConsentDebugGeography + " (development builds only)."));
