@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 
 namespace Sketch.Sdk.Tests
@@ -166,6 +167,34 @@ namespace Sketch.Sdk.Tests
             Assert.AreEqual(SketchAppUpdateDecision.None, SketchAppUpdatePolicy.Decide(default, 10, 15));
             Assert.AreEqual(SketchAppUpdateDecision.None, SketchAppUpdatePolicy.Decide(Available(false, false), 10, 15));
             Assert.AreEqual(SketchAppUpdateDecision.Flexible, SketchAppUpdatePolicy.Decide(Available(true, false), 10, 15), "forced but immediate not allowed falls back to flexible");
+        }
+
+        [Test]
+        public void AppOpenCadence_ThirdOpenSurvivesRestartAndResetsCounter()
+        {
+            var savedSettings = SketchAds.Policy.Settings;
+            var advance = typeof(SketchAds).GetMethod("AdvanceAppOpenCadence", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.NotNull(advance);
+            bool Open() => (bool)advance.Invoke(null, null);
+            var store = new MemoryStore();
+            try
+            {
+                SketchAds.Policy.Settings = new SketchAdsPolicySettings { AppOpenEvery = 3 };
+                SketchAds.UseAppOpenCadenceStore(store);
+                Assert.IsFalse(Open());
+                Assert.IsFalse(Open());
+                SketchAds.UseAppOpenCadenceStore(null);
+                SketchAds.UseAppOpenCadenceStore(store);
+                Assert.IsTrue(Open());
+                SketchAds.UseAppOpenCadenceStore(null);
+                SketchAds.UseAppOpenCadenceStore(store);
+                Assert.IsFalse(Open());
+            }
+            finally
+            {
+                SketchAds.UseAppOpenCadenceStore(null);
+                SketchAds.Policy.Settings = savedSettings;
+            }
         }
 
         sealed class MemoryStore : ISketchKeyValueStore
