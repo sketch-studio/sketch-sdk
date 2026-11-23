@@ -2,6 +2,6 @@ namespace Sketch.Sdk
 {
     public static class SketchSdkVersion
     {
-        public const string VERSION = "1.5.3";
+        public const string VERSION = "1.5.4";
     }
 }

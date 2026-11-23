@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.4
+- Expose Unity IAP entitlement checks for game-owned refund handling.
+- Keep mediation adapter removal confirmation in the Manager UI.
+
 ## 1.5.3
 - Optional legacy FCM registration tokens for existing game backends.
 - Register a custom consent provider with standalone ads or use the built-in UMP adapter with AdMob.
