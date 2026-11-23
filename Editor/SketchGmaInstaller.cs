@@ -35,6 +35,13 @@ namespace Sketch.Sdk.Editor
                 }
                 else
                 {
+                    string importedPath = FindImportedAdapter(packageName);
+                    if (importedPath != null)
+                    {
+                        Debug.LogWarning("[SketchSdk] " + packageName + " is already imported at " + importedPath +
+                                         ". Remove the manually imported adapter before installing through Package Manager.");
+                        return;
+                    }
                     EnsureScopedRegistry();
                     _adapterAdd = Client.Add(packageName);
                 }
@@ -45,6 +52,27 @@ namespace Sketch.Sdk.Editor
             {
                 Debug.LogError("[SketchSdk] Mediation adapter request failed: " + error.Message);
             }
+        }
+
+        static string FindImportedAdapter(string packageName)
+        {
+            string name = packageName switch
+            {
+                "com.google.ads.mobile.mediation.liftoffmonetize" => "LiftoffMonetize",
+                "com.google.ads.mobile.mediation.unityads" => "UnityAds",
+                "com.google.ads.mobile.mediation.mintegral" => "Mintegral",
+                _ => null
+            };
+            if (name == null) return null;
+            string path = "Assets/GoogleMobileAds/Mediation/" + name;
+            if (!Directory.Exists(path)) return null;
+            foreach (string file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+            {
+                string extension = Path.GetExtension(file);
+                if (extension == ".xml" || extension == ".dll" || extension == ".cs" || extension == ".asmdef")
+                    return path;
+            }
+            return null;
         }
 
         static void PollAdapter()
