@@ -137,8 +137,10 @@ namespace Sketch.Sdk.Tests
             yield return WaitReady();
             SketchAdsPolicySettings saved = SketchAds.Policy.Settings;
             string savedVersion = SketchAds.Policy.AppVersion;
+            bool savedAdsRemoved = SketchAds.Policy.AdsRemoved;
             try
             {
+                SketchAds.Policy.AdsRemoved = false;
                 SketchAds.Policy.AppVersion = Application.version;
                 SketchAds.Policy.Settings = new SketchAdsPolicySettings
                 {
@@ -162,6 +164,7 @@ namespace Sketch.Sdk.Tests
             {
                 SketchAds.Policy.Settings = saved;
                 SketchAds.Policy.AppVersion = savedVersion;
+                SketchAds.Policy.AdsRemoved = savedAdsRemoved;
             }
         }
 
@@ -170,8 +173,10 @@ namespace Sketch.Sdk.Tests
         {
             yield return WaitReady();
             SketchAdsPolicySettings saved = SketchAds.Policy.Settings;
+            bool savedAdsRemoved = SketchAds.Policy.AdsRemoved;
             try
             {
+                SketchAds.Policy.AdsRemoved = false;
                 SketchAds.Policy.Settings = new SketchAdsPolicySettings { InterstitialStartDelaySeconds = 1e9f, InterstitialCooldownSeconds = 60f };
                 int closed = 0;
                 Assert.IsFalse(SketchAds.ShowInterstitial("level_end", () => closed++), "start delay blocks");
@@ -190,7 +195,11 @@ namespace Sketch.Sdk.Tests
                 yield return Frames(3);
                 Assert.AreEqual(3, closed);
             }
-            finally { SketchAds.Policy.Settings = saved; }
+            finally
+            {
+                SketchAds.Policy.Settings = saved;
+                SketchAds.Policy.AdsRemoved = savedAdsRemoved;
+            }
         }
 
         [UnityTest]
@@ -198,10 +207,11 @@ namespace Sketch.Sdk.Tests
         {
             yield return WaitReady();
             SketchAdsPolicySettings saved = SketchAds.Policy.Settings;
+            bool savedAdsRemoved = SketchAds.Policy.AdsRemoved;
             try
             {
                 SketchAds.Policy.Settings = new SketchAdsPolicySettings { InterstitialStartDelaySeconds = 0f, InterstitialCooldownSeconds = 0f };
-                SketchAds.SetAdsRemoved(true);
+                SketchAds.Policy.AdsRemoved = true;
                 Assert.IsFalse(SketchAds.ShowInterstitial("x"));
                 SketchAds.ShowBanner();
                 yield return Frames(2);
@@ -217,7 +227,7 @@ namespace Sketch.Sdk.Tests
             }
             finally
             {
-                SketchAds.SetAdsRemoved(false);
+                SketchAds.Policy.AdsRemoved = savedAdsRemoved;
                 SketchAds.HideBanner();
                 SketchAds.Policy.Settings = saved;
             }
