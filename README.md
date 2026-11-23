@@ -17,6 +17,8 @@ Set the MAX SDK key through AppLovin Integration Manager. Configure mediation an
 
 For iOS ATT managed by Sketch SDK, install `com.unity.ads.ios-support` 1.3.0+ and set the tracking purpose in the Consent tab. For Firebase push, install `com.google.firebase.messaging` 14.1.0, configure FCM registration and subscribe to `SketchFirebaseMessaging.RegistrationReceived` and `MessageReceived`. Call `SketchFirebaseMessaging.Start` after the game's notification permission flow.
 
+For a backend that still targets FCM registration tokens, subscribe to `TokenReceived` and call `StartWithLegacyTokens` instead. Use one registration mode per process. Firebase is deprecating token-based targeting, so new integrations should use Installation IDs.
+
 - **Ads (Google AdMob):** banner, interstitial, rewarded, rewarded interstitial, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
 - **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads with a configurable scope (`Pacing.RemoveAdsBlocks`, default: interstitial, app open, banner and native off; rewarded always kept). All overridable from remote config without a new build.
 - **Consent:** Google UMP (GDPR / US states) before ads, privacy-options button API. Ads are requested only when UMP allows it; if the form could not be answered (offline, dismissed) ads start after the privacy form or on the next resume, and the game never waits on it.
