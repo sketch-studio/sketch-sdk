@@ -5,6 +5,7 @@ namespace Sketch.Sdk
     {
         double _firstOpen;
         double _lastFullscreen = double.NegativeInfinity;
+        double _lastInterstitialCooldownReset = double.NegativeInfinity;
 
         public SketchAdsPolicySettings Settings { get; set; }
         /// <summary>1-based session counter.</summary>
@@ -93,7 +94,7 @@ namespace Sketch.Sdk
             if (Session < minSession) return Block("session_gate");
             if (now - _firstOpen < Settings.InterstitialStartDelaySeconds) return Block("start_delay");
             float cooldown = rule != null && rule.CooldownSeconds >= 0f ? rule.CooldownSeconds : Settings.InterstitialCooldownSeconds;
-            if (!skipCooldown && now - _lastFullscreen < cooldown) return Block("cooldown");
+            if (!skipCooldown && now - _lastInterstitialCooldownReset < cooldown) return Block("cooldown");
             return Pass();
         }
 
@@ -109,9 +110,18 @@ namespace Sketch.Sdk
         }
 
         /// <summary>Call when any fullscreen ad (interstitial, rewarded, app open) closes.</summary>
-        public void OnFullscreenClosed(double now) => _lastFullscreen = now;
+        public void OnFullscreenClosed(double now)
+        {
+            _lastFullscreen = _lastInterstitialCooldownReset = now;
+        }
+
+        public void OnRewardedClosed(double now)
+        {
+            _lastFullscreen = now;
+            if (Settings.ResetInterstitialCooldownOnRewarded) _lastInterstitialCooldownReset = now;
+        }
         /// <summary>Restart the interstitial cooldown without showing one.</summary>
-        public void ResetInterstitialCooldown(double now) => _lastFullscreen = now;
+        public void ResetInterstitialCooldown(double now) => OnFullscreenClosed(now);
 
         bool Block(string reason) { LastBlockReason = reason; return false; }
         bool Pass() { LastBlockReason = string.Empty; return true; }

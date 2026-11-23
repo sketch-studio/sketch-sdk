@@ -196,7 +196,7 @@ namespace Sketch.Sdk
             BeginFullscreen();
             bool started = SketchSdk.ShowRewarded(granted =>
             {
-                Policy.OnFullscreenClosed(Now);
+                Policy.OnRewardedClosed(Now);
                 EndFullscreen();
                 Result(granted);
             });
@@ -250,7 +250,7 @@ namespace Sketch.Sdk
             BeginFullscreen();
             bool started = SketchSdk.ShowRewardedInterstitial(granted =>
             {
-                Policy.OnFullscreenClosed(Now);
+                Policy.OnRewardedClosed(Now);
                 EndFullscreen();
                 Result(granted);
             });

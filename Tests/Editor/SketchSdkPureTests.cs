@@ -86,6 +86,25 @@ namespace Sketch.Sdk.Tests
             Assert.IsTrue(policy.CanShowInterstitial("any", 130, skipCooldown: true));
         }
 
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void RewardedCooldown_CanPreserveInterstitialTimerAndStillBlockAppOpen(bool resets, bool canShow)
+        {
+            var settings = new SketchAdsPolicySettings
+            {
+                InterstitialStartDelaySeconds = 0,
+                InterstitialCooldownSeconds = 30,
+                AppOpenAfterFullscreenSeconds = 30,
+                ResetInterstitialCooldownOnRewarded = resets
+            };
+            var policy = new SketchAdsPolicy(settings, 0);
+            policy.OnFullscreenClosed(10);
+            policy.OnRewardedClosed(35);
+            Assert.AreEqual(canShow, policy.CanShowInterstitial("default", 40));
+            Assert.IsFalse(policy.CanShowAppOpen(40, false, 10));
+            Assert.AreEqual("after_fullscreen", policy.LastBlockReason);
+        }
+
         [Test]
         public void ServerQueue_BatchesEvents_AndKeepsOrder()
         {

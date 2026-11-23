@@ -10,6 +10,7 @@ namespace Sketch.Sdk
     {
         public const string INTER_START_DELAY = "sketch_inter_start_delay";
         public const string INTER_COOLDOWN = "sketch_inter_cooldown";
+        public const string INTER_RESET_ON_REWARDED = "sketch_inter_reset_on_rewarded";
         public const string INTER_MIN_SESSION = "sketch_inter_min_session";
         public const string BANNER_START_DELAY = "sketch_banner_start_delay";
         public const string APP_OPEN_RESUME = "sketch_app_open_resume";
@@ -33,6 +34,7 @@ namespace Sketch.Sdk
             {
                 InterstitialStartDelaySeconds = values.GetFloat(INTER_START_DELAY, source.InterstitialStartDelaySeconds),
                 InterstitialCooldownSeconds = values.GetFloat(INTER_COOLDOWN, source.InterstitialCooldownSeconds),
+                ResetInterstitialCooldownOnRewarded = values.GetBool(INTER_RESET_ON_REWARDED, source.ResetInterstitialCooldownOnRewarded),
                 InterstitialMinSession = values.GetInt(INTER_MIN_SESSION, source.InterstitialMinSession),
                 AdsOffVersions = values.GetString(ADS_OFF_VERSION, source.AdsOffVersions ?? string.Empty),
                 RemoveAdsBlocks = source.RemoveAdsBlocks,

@@ -20,6 +20,7 @@ namespace Sketch.Sdk.Editor
             "IosTrackingUsageDescription", "PrivacyPolicyUrl",
             "AdMobBannerSlots",
             "Pacing.AppOpenEvery", "Pacing.AppOpenPresentationDelaySeconds",
+            "Pacing.ResetInterstitialCooldownOnRewarded",
             "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
@@ -339,6 +340,7 @@ namespace Sketch.Sdk.Editor
             {
                 Field("Pacing.InterstitialStartDelaySeconds", "Start delay (s)", "No interstitial until this many seconds after the FIRST app open (install).", SketchAdsRemoteKeys.INTER_START_DELAY);
                 Field("Pacing.InterstitialCooldownSeconds", "Cooldown (s)", "Minimum seconds between an interstitial and the previous fullscreen ad.", SketchAdsRemoteKeys.INTER_COOLDOWN);
+                Field("Pacing.ResetInterstitialCooldownOnRewarded", "Reset after rewarded", "Restart interstitial cooldown when a rewarded ad closes.", SketchAdsRemoteKeys.INTER_RESET_ON_REWARDED);
                 Field("Pacing.InterstitialMinSession", "From session", "Session number from which interstitials may show (1 = first session).", SketchAdsRemoteKeys.INTER_MIN_SESSION);
                 Field("Pacing.Placements", "Placement rules", "Per placement: on/off, from session, own cooldown (-1 = global).", SketchAdsRemoteKeys.PLACEMENTS);
                 SketchEditorStyles.EndSection();

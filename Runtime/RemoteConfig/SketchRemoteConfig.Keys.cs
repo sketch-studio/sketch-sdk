@@ -42,6 +42,7 @@ namespace Sketch.Sdk
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.INTER_START_DELAY, p.InterstitialStartDelaySeconds, "Seconds after the first app open before any interstitial."),
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.INTER_COOLDOWN, p.InterstitialCooldownSeconds, "Minimum seconds between an interstitial and the previous fullscreen ad."),
                 SketchRemoteKeyDef.Int(SketchAdsRemoteKeys.INTER_MIN_SESSION, p.InterstitialMinSession, "Session number from which interstitials may show (1 = first)."),
+                SketchRemoteKeyDef.Bool(SketchAdsRemoteKeys.INTER_RESET_ON_REWARDED, p.ResetInterstitialCooldownOnRewarded, "Restart interstitial cooldown when a rewarded ad closes."),
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.BANNER_START_DELAY, p.BannerStartDelaySeconds, "Seconds after the first app open before the banner shows."),
                 SketchRemoteKeyDef.Bool(SketchAdsRemoteKeys.APP_OPEN_RESUME, p.AppOpenOnResume, "Show an app-open ad when the app comes back from background."),
                 SketchRemoteKeyDef.Bool(SketchAdsRemoteKeys.APP_OPEN_COLD_START, p.AppOpenOnColdStart, "Show an app-open ad once on cold start (splash)."),

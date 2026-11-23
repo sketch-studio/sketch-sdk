@@ -23,6 +23,7 @@ namespace Sketch.Sdk
         public float InterstitialStartDelaySeconds = 30f;
         /// <summary>Minimum seconds between an interstitial and the previous fullscreen ad (interstitial, rewarded or app open).</summary>
         public float InterstitialCooldownSeconds = 30f;
+        public bool ResetInterstitialCooldownOnRewarded = true;
         /// <summary>Session number from which interstitials may show (1 = first session).</summary>
         public int InterstitialMinSession = 1;
         /// <summary>Comma-separated app versions (exact, trimmed) that show no banner, interstitial, app open, native or rewarded interstitial. Rewarded keeps working. Empty = off.</summary>
