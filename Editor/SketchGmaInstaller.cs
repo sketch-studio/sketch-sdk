@@ -31,7 +31,6 @@ namespace Sketch.Sdk.Editor
             {
                 if (remove)
                 {
-                    if (!EditorUtility.DisplayDialog("Remove mediation adapter", "Remove " + packageName + " from this Unity project?", "Remove", "Cancel")) return;
                     _adapterRemove = Client.Remove(packageName);
                 }
                 else

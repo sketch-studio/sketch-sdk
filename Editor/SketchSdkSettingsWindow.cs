@@ -391,7 +391,8 @@ namespace Sketch.Sdk.Editor
                 if (GUILayout.Button(package == null ? "Install" : "Update", GUILayout.Width(70)))
                     SketchGmaInstaller.ChangeMediationAdapter(packageName, false);
                 using (new EditorGUI.DisabledScope(package == null || !package.isDirectDependency))
-                    if (GUILayout.Button("Remove", GUILayout.Width(70)))
+                    if (GUILayout.Button("Remove", GUILayout.Width(70)) &&
+                        EditorUtility.DisplayDialog("Remove mediation adapter", "Remove " + label + " from this Unity project?", "Remove", "Cancel"))
                         SketchGmaInstaller.ChangeMediationAdapter(packageName, true);
             }
             EditorGUILayout.EndHorizontal();
