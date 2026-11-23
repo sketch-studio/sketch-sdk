@@ -349,6 +349,24 @@ namespace Sketch.Sdk
 
         public static bool HideBanner(string name) =>
             SketchSdk.Provider is ISketchNamedBannerProvider provider && provider.SetBannerRequested(name, false);
+
+        public static void ShowAllNamedBanners()
+        {
+            if (SketchSdk.Provider is ISketchNamedBannerProvider provider) provider.SetAllBannersRequested(true);
+        }
+
+        public static void HideAllNamedBanners()
+        {
+            if (SketchSdk.Provider is ISketchNamedBannerProvider provider) provider.SetAllBannersRequested(false);
+        }
+
+        public static bool ReleaseBanner(string name) =>
+            SketchSdk.Provider is ISketchNamedBannerProvider provider && provider.ReleaseBanner(name);
+
+        public static void ReleaseAllNamedBanners()
+        {
+            if (SketchSdk.Provider is ISketchNamedBannerProvider provider) provider.ReleaseAllBanners();
+        }
         /// <summary>Current banner height in screen pixels (0 when hidden). Use it to lift bottom UI.</summary>
         public static float BannerHeightPixels => SketchSdk.BannerHeightPixels;
         /// <summary>Raised on the main thread when the banner height changes.</summary>

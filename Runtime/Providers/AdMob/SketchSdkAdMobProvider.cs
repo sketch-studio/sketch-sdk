@@ -732,6 +732,39 @@ namespace Sketch.Sdk
             return true;
         }
 
+        public void SetAllBannersRequested(bool requested)
+        {
+            double now = Now;
+            bool allowed = _initialized && SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix);
+            foreach (var state in _namedBanners.Values)
+            {
+                state.Requested = requested;
+                if (_initialized) UpdateNamedBanner(state, allowed, now);
+            }
+        }
+
+        public bool ReleaseBanner(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || !_namedBanners.TryGetValue(name.Trim(), out var state)) return false;
+            ReleaseNamedBanner(state);
+            return true;
+        }
+
+        public void ReleaseAllBanners()
+        {
+            foreach (var state in _namedBanners.Values) ReleaseNamedBanner(state);
+        }
+
+        static void ReleaseNamedBanner(NamedBanner state)
+        {
+            BannerView view = state.View;
+            state.View = null;
+            state.Loaded = state.Requested = state.Visible = false;
+            state.RetryAt = 0;
+            state.Failures = 0;
+            view?.Destroy();
+        }
+
         void UpdateNamedBanner(NamedBanner state, bool allowed, double now)
         {
             if (state.View == null && state.Requested && allowed && now >= state.RetryAt)

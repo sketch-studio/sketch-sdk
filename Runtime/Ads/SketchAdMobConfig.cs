@@ -21,6 +21,9 @@ namespace Sketch.Sdk
     public interface ISketchNamedBannerProvider
     {
         bool SetBannerRequested(string name, bool requested);
+        void SetAllBannersRequested(bool requested);
+        bool ReleaseBanner(string name);
+        void ReleaseAllBanners();
     }
 
     /// <summary>Runtime values mapped from a game-owned config asset or bootstrap.</summary>
