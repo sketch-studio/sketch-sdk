@@ -154,7 +154,7 @@ namespace Sketch.Sdk
             _focusRetry = focused =>
             {
                 if (!focused || _adsStarted || !_started || Settings == null) return;
-                SketchConsent.Regather(() => { if (Settings != null) StartAds(Settings); });
+                SketchConsent.Refresh(() => { if (Settings != null) StartAds(Settings); });
             };
             Application.focusChanged += _focusRetry;
         }

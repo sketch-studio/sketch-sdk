@@ -12,6 +12,7 @@ namespace Sketch.Sdk
         static ISketchConsentProvider _provider;
         static SketchConsentRequest _request;
         static bool _regathering;
+        static Action _refreshCallbacks;
 
         /// <summary>Raised on the main thread after the privacy options form closes or consent was gathered again.</summary>
         public static event Action Changed;
@@ -63,10 +64,12 @@ namespace Sketch.Sdk
             try { _provider?.Reset(); } catch (Exception e) { SketchLog.Warn("Consent reset failed: " + e.Message); }
         }
 
-        /// <summary>Ask again (e.g. on resume after the form failed offline). onDone fires once.</summary>
-        internal static void Regather(Action onDone)
+        /// <summary>Refresh the configured consent provider. Returns false when no refresh can start or be joined.</summary>
+        public static bool Refresh(Action onDone = null)
         {
-            if (_provider == null || _regathering) return;
+            if (_provider == null || !IsGathered) return false;
+            _refreshCallbacks += onDone;
+            if (_regathering) return true;
             _regathering = true;
             bool done = false;
             void Finish()
@@ -74,11 +77,18 @@ namespace Sketch.Sdk
                 if (done) return;
                 done = true;
                 _regathering = false;
+                var callbacks = _refreshCallbacks;
+                _refreshCallbacks = null;
                 RaiseChanged();
-                onDone?.Invoke();
+                if (callbacks == null) return;
+                foreach (Action callback in callbacks.GetInvocationList())
+                {
+                    try { callback(); } catch (Exception error) { Debug.LogException(error); }
+                }
             }
             try { _provider.Gather(_request ?? new SketchConsentRequest(), () => SketchSdkLoop.Run(Finish)); }
             catch (Exception e) { SketchLog.Warn("Consent regather failed: " + e.Message); Finish(); }
+            return true;
         }
 
         static void RaiseChanged()
@@ -120,6 +130,7 @@ namespace Sketch.Sdk
             _provider = null;
             _request = null;
             _regathering = false;
+            _refreshCallbacks = null;
             Changed = null;
             IsGathered = false;
         }
