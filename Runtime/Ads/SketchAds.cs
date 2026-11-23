@@ -21,6 +21,35 @@ namespace Sketch.Sdk
         static bool _bannerShown;
         static double _focusLostAt = -1;
         static int _appOpenSuppress;
+        const string APP_OPEN_COUNT_KEY = "sketchsdk.app_open_cadence";
+        static ISketchKeyValueStore _appOpenCadenceStore;
+        static int _appOpenCount;
+        static double _resumePresentationAt = -1;
+
+        /// <summary>Use the game's durable settings store for cadence across launches.</summary>
+        public static void UseAppOpenCadenceStore(ISketchKeyValueStore store)
+        {
+            _appOpenCadenceStore = store;
+            _appOpenCount = Mathf.Max(0, store?.GetInt(APP_OPEN_COUNT_KEY, 0) ?? 0);
+        }
+
+        static bool AdvanceAppOpenCadence()
+        {
+            int every = Policy.Settings.AppOpenEvery;
+            if (every <= 1) return true;
+            bool due = _appOpenCount >= every - 1;
+            _appOpenCount = due ? 0 : _appOpenCount + 1;
+            if (_appOpenCadenceStore != null)
+            {
+                try
+                {
+                    _appOpenCadenceStore.SetInt(APP_OPEN_COUNT_KEY, _appOpenCount);
+                    _appOpenCadenceStore.Save();
+                }
+                catch (Exception error) { Debug.LogException(error); }
+            }
+            return due;
+        }
         static bool _audioPausedByAds;
         static bool _wasAudioPaused;
 
@@ -272,14 +301,22 @@ namespace Sketch.Sdk
         public static void ShowColdStartAppOpen(float maxWaitSeconds, Action onDone)
         {
             bool done = false;
-            double deadline = Time.realtimeSinceStartupAsDouble + Mathf.Max(0f, maxWaitSeconds);
+            bool counted = false;
+            double startedAt = Time.realtimeSinceStartupAsDouble;
+            double deadline = startedAt + Mathf.Max(0f, maxWaitSeconds);
+            double presentationAt = startedAt + Mathf.Max(0f, Policy.Settings.AppOpenPresentationDelaySeconds);
             void Finish() { if (done) return; done = true; SketchSdkLoop.Update -= Wait; Safe(onDone); }
             void Wait()
             {
                 if (done) return;
                 // Leave at once when pacing would block anyway (disabled, ads removed, start delay...).
                 if (!Policy.CanShowAppOpen(Now, true, 0)) { Finish(); return; }
-                if (SketchSdk.IsInitialized && IsAppOpenReady)
+                if (!counted)
+                {
+                    counted = true;
+                    if (!AdvanceAppOpenCadence()) { Finish(); return; }
+                }
+                if (Time.realtimeSinceStartupAsDouble >= presentationAt && SketchSdk.IsInitialized && IsAppOpenReady)
                 {
                     SketchSdkLoop.Update -= Wait;
                     ShowAppOpen("cold_start", Finish, coldStart: true);
@@ -410,6 +447,11 @@ namespace Sketch.Sdk
             }
             if (!focused)
             {
+                if (_resumePresentationAt >= 0)
+                {
+                    _resumePresentationAt = -1;
+                    SketchSdkLoop.Update -= ShowDelayedResume;
+                }
                 _focusLostAt = Time.realtimeSinceStartupAsDouble;
                 return;
             }
@@ -421,9 +463,26 @@ namespace Sketch.Sdk
             // Also covers fullscreen ads shown through the low-level SketchSdk API (they bypass the policy bookkeeping).
             if (SketchSdk.SecondsSinceFullscreenClosed < Policy.Settings.AppOpenAfterFullscreenSeconds) return;
             if (!Policy.CanShowAppOpen(Now, false, background)) return;
+            if (!AdvanceAppOpenCadence()) return;
             if (!IsAppOpenReady) return;
+            float delay = Policy.Settings.AppOpenPresentationDelaySeconds;
+            if (delay > 0)
+            {
+                _resumePresentationAt = Time.realtimeSinceStartupAsDouble + delay;
+                SketchSdkLoop.Update += ShowDelayedResume;
+                return;
+            }
             // Show on the next frame: some devices deliver focus before the surface is ready.
             SketchSdkLoop.Post(() => ShowAppOpen("resume"));
+        }
+
+        static void ShowDelayedResume()
+        {
+            if (Time.realtimeSinceStartupAsDouble < _resumePresentationAt) return;
+            SketchSdkLoop.Update -= ShowDelayedResume;
+            _resumePresentationAt = -1;
+            if (Application.isFocused && _fullscreenDepth == 0 && !SketchSdk.FullscreenAdShowing && _appOpenSuppress == 0)
+                ShowAppOpen("resume");
         }
 
         static int _fullscreenDepth;
@@ -475,6 +534,10 @@ namespace Sketch.Sdk
         static void ResetStatics()
         {
             Application.focusChanged -= OnFocusChanged;
+            SketchSdkLoop.Update -= ShowDelayedResume;
+            _resumePresentationAt = -1;
+            _appOpenCadenceStore = null;
+            _appOpenCount = 0;
             _policy = null;
             _adsRemovedStore = null;
             CurrentPlacement.Clear();

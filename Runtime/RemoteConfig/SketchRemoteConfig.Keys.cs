@@ -46,6 +46,8 @@ namespace Sketch.Sdk
                 SketchRemoteKeyDef.Bool(SketchAdsRemoteKeys.APP_OPEN_RESUME, p.AppOpenOnResume, "Show an app-open ad when the app comes back from background."),
                 SketchRemoteKeyDef.Bool(SketchAdsRemoteKeys.APP_OPEN_COLD_START, p.AppOpenOnColdStart, "Show an app-open ad once on cold start (splash)."),
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.APP_OPEN_START_DELAY, p.AppOpenStartDelaySeconds, "Seconds after the first app open before any app-open ad."),
+                SketchRemoteKeyDef.Int(SketchAdsRemoteKeys.APP_OPEN_EVERY, p.AppOpenEvery, "Number of eligible app opens per app-open ad."),
+                SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.APP_OPEN_PRESENTATION_DELAY, p.AppOpenPresentationDelaySeconds, "Delay after the eligible opening event."),
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.APP_OPEN_MIN_BACKGROUND, p.AppOpenMinBackgroundSeconds, "Seconds in background needed before a resume app-open ad."),
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.APP_OPEN_AFTER_FULLSCREEN, p.AppOpenAfterFullscreenSeconds, "No app-open ad this many seconds after any fullscreen ad."),
                 SketchRemoteKeyDef.Json(SketchAdsRemoteKeys.PLACEMENTS, "[]", "Per-placement interstitial rules, e.g. [{\"placement\":\"level_end\",\"enabled\":true,\"min_session\":2,\"cooldown\":45}]."),

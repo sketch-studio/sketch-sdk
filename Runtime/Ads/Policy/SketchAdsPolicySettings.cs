@@ -38,6 +38,10 @@ namespace Sketch.Sdk
         public bool AppOpenOnColdStart = true;
         /// <summary>No app-open ad until this many seconds after the first app open.</summary>
         public float AppOpenStartDelaySeconds;
+        /// <summary>Eligible opens between app-open ads. One retains the default behavior.</summary>
+        public int AppOpenEvery = 1;
+        /// <summary>Seconds to wait after an eligible cold start or resume.</summary>
+        public float AppOpenPresentationDelaySeconds;
         /// <summary>Background time needed before resume shows an app-open ad.</summary>
         public float AppOpenMinBackgroundSeconds = 3f;
         /// <summary>No app-open ad within this many seconds after any fullscreen ad (the resume is usually the ad closing).</summary>

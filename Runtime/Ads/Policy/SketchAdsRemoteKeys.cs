@@ -15,6 +15,8 @@ namespace Sketch.Sdk
         public const string APP_OPEN_RESUME = "sketch_app_open_resume";
         public const string APP_OPEN_COLD_START = "sketch_app_open_cold_start";
         public const string APP_OPEN_START_DELAY = "sketch_app_open_start_delay";
+        public const string APP_OPEN_EVERY = "sketch_app_open_every";
+        public const string APP_OPEN_PRESENTATION_DELAY = "sketch_app_open_presentation_delay";
         public const string APP_OPEN_MIN_BACKGROUND = "sketch_app_open_min_background";
         public const string APP_OPEN_AFTER_FULLSCREEN = "sketch_app_open_after_fullscreen";
         public const string PLACEMENTS = "sketch_ads_placements";
@@ -38,6 +40,8 @@ namespace Sketch.Sdk
                 AppOpenOnResume = values.GetBool(APP_OPEN_RESUME, source.AppOpenOnResume),
                 AppOpenOnColdStart = values.GetBool(APP_OPEN_COLD_START, source.AppOpenOnColdStart),
                 AppOpenStartDelaySeconds = values.GetFloat(APP_OPEN_START_DELAY, source.AppOpenStartDelaySeconds),
+                AppOpenEvery = values.GetInt(APP_OPEN_EVERY, source.AppOpenEvery),
+                AppOpenPresentationDelaySeconds = values.GetFloat(APP_OPEN_PRESENTATION_DELAY, source.AppOpenPresentationDelaySeconds),
                 AppOpenMinBackgroundSeconds = values.GetFloat(APP_OPEN_MIN_BACKGROUND, source.AppOpenMinBackgroundSeconds),
                 AppOpenAfterFullscreenSeconds = values.GetFloat(APP_OPEN_AFTER_FULLSCREEN, source.AppOpenAfterFullscreenSeconds),
                 Placements = new List<SketchPlacementRule>(),

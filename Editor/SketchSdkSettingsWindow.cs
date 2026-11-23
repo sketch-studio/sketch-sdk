@@ -19,6 +19,7 @@ namespace Sketch.Sdk.Editor
             "AdsBackend", "LevelPlayAndroid", "LevelPlayIos", "MaxAndroid", "MaxIos", "LiftoffAndroid", "LiftoffIos",
             "IosTrackingUsageDescription", "PrivacyPolicyUrl",
             "AdMobBannerSlots",
+            "Pacing.AppOpenEvery", "Pacing.AppOpenPresentationDelaySeconds",
             "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
@@ -349,6 +350,8 @@ namespace Sketch.Sdk.Editor
                 Field("Pacing.AppOpenOnColdStart", "App open on cold start", "Show an app-open ad once at launch (splash waits for it).", SketchAdsRemoteKeys.APP_OPEN_COLD_START);
                 Field("Pacing.AppOpenOnResume", "App open on resume", "Show an app-open ad when the player comes back to the app.", SketchAdsRemoteKeys.APP_OPEN_RESUME);
                 Field("Pacing.AppOpenStartDelaySeconds", "App open start delay (s)", "No app-open ad until this many seconds after the first app open.", SketchAdsRemoteKeys.APP_OPEN_START_DELAY);
+                Field("Pacing.AppOpenEvery", "Eligible opens per ad", "One shows at each eligible open. Use three for the MMP2 cadence.", SketchAdsRemoteKeys.APP_OPEN_EVERY);
+                Field("Pacing.AppOpenPresentationDelaySeconds", "Presentation delay (s)", "Wait after an eligible cold start or resume.", SketchAdsRemoteKeys.APP_OPEN_PRESENTATION_DELAY);
                 Field("Pacing.AppOpenMinBackgroundSeconds", "Min background time (s)", "The app must stay in background this long before a resume ad.", SketchAdsRemoteKeys.APP_OPEN_MIN_BACKGROUND);
                 Field("Pacing.AppOpenAfterFullscreenSeconds", "Quiet after fullscreen (s)", "No app-open ad this many seconds after any fullscreen ad closes.", SketchAdsRemoteKeys.APP_OPEN_AFTER_FULLSCREEN);
                 Field("NativeAttachTimeoutSeconds", "Native attach timeout (s)", "A native ad that does not attach in time closes as LoadFailed (0 = no limit).");
