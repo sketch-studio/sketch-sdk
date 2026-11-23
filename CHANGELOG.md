@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+- Optional standalone LevelPlay, AppLovin MAX and Liftoff Monetize providers, selected per game and configured per platform.
+- Per-network controls in SDK Manager for AdMob mediation adapter installation, updates and removal.
+- Optional Firebase Messaging, iOS tracking authorization, native iOS reviews and local notifications, and Google Play receipt validation.
+- Git installer includes SDK plugins and preserves game settings, splash hooks and the generated splash scene.
+- Verified through Unity Editor tests and Android Player script compilation. Native device delivery and full MMP2 behavior comparison are still in progress.
+
 ## 1.4.6
 - Sync of fixes made in a game's embedded copy back to the source repo (from now on SDK changes are made here and consumed via Package Manager).
 - Native in-rect close: configurable countdown `SketchSdkSettings.NativeCloseDelaySeconds` (remote `sketch_native_close_delay`, 0 = tappable at once), `SketchNativeClose.CountdownSeconds`/`ResolveCountdown`; Editor fake view and AdMob provider use it.
