@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+- Named AdMob banners support separate platform IDs, size, position and adaptive width.
+- Optional app-open cadence and presentation delay. The game can supply durable storage for the counter.
+- Batch installer takes a specific tag and backs up conflicting files outside the imported Assets tree.
+
 ## 1.5.0
 - Optional standalone LevelPlay, AppLovin MAX and Liftoff Monetize providers, selected per game and configured per platform.
 - Per-network controls in SDK Manager for AdMob mediation adapter installation, updates and removal.
