@@ -15,6 +15,8 @@ In **Sketch SDK > Manager > Ads**, select the provider and enter each platform's
 
 Set the MAX SDK key through AppLovin Integration Manager. Configure mediation and test devices in the selected vendor's tools. Google test ad IDs apply to AdMob only. For AdMob mediation with Liftoff, install Google's Liftoff mediation adapter and keep AdMob selected.
 
+For a standalone network, choose the app's consent management provider and register it with `SketchSdkModules.ConsentProviderFactory` before the SDK bootstraps. The SDK waits for the registered provider before starting ads. AdMob uses the built-in UMP adapter when no custom consent provider is registered.
+
 For iOS ATT managed by Sketch SDK, install `com.unity.ads.ios-support` 1.3.0+ and set the tracking purpose in the Consent tab. For Firebase push, install `com.google.firebase.messaging` 14.1.0, configure FCM registration and subscribe to `SketchFirebaseMessaging.RegistrationReceived` and `MessageReceived`. Call `SketchFirebaseMessaging.Start` after the game's notification permission flow.
 
 For a backend that still targets FCM registration tokens, subscribe to `TokenReceived` and call `StartWithLegacyTokens` instead. Use one registration mode per process. Firebase is deprecating token-based targeting, so new integrations should use Installation IDs.

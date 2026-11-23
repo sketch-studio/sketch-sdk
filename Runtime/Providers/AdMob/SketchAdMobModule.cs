@@ -20,7 +20,7 @@ namespace Sketch.Sdk
                 if (settings.UseTestAds) SketchLog.Info("AdMob test ad units in use (development build).");
                 return new SketchSdkAdMobProvider(config, telemetry);
             };
-            SketchSdkModules.ConsentProviderFactory = _ => new SketchUmpConsentProvider();
+            SketchSdkModules.AdMobConsentProviderFactory = _ => new SketchUmpConsentProvider();
         }
     }
 }

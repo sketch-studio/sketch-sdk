@@ -33,6 +33,7 @@ namespace Sketch.Sdk
         }
 
         public static Func<SketchSdkSettings, ISketchConsentProvider> ConsentProviderFactory { get; set; }
+        public static Func<SketchSdkSettings, ISketchConsentProvider> AdMobConsentProviderFactory { get; set; }
         public static Action<Action> RequestTrackingAuthorization { get; set; }
         static readonly List<Func<SketchSdkSettings, ISketchAnalyticsSink>> SinkFactories = new List<Func<SketchSdkSettings, ISketchAnalyticsSink>>();
 
@@ -49,6 +50,7 @@ namespace Sketch.Sdk
             AdsProviderFactory = null;
             AdsFactories.Clear();
             ConsentProviderFactory = null;
+            AdMobConsentProviderFactory = null;
             RequestTrackingAuthorization = null;
             SinkFactories.Clear();
         }
