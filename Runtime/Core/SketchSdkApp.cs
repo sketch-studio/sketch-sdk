@@ -174,17 +174,22 @@ namespace Sketch.Sdk
             SketchAnalytics.AddSink(new SketchDebugLogSink());
             SketchLog.Info("Sketch analytics: Editor mode, events are logged to the Console only (no server / Firebase).");
 #else
-            if (settings.VerboseLogs) SketchAnalytics.AddSink(new SketchDebugLogSink());
-            if (settings.HasServerCredentials)
+            // OR-873: Development Builds are test builds: dev server only, no Firebase, never production data.
+            bool devBuild = Debug.isDebugBuild;
+            if (settings.VerboseLogs || devBuild) SketchAnalytics.AddSink(new SketchDebugLogSink());
+            string serverUrl = SketchAnalyticsRouting.ServerUrl(settings, devBuild);
+            if (settings.HasServerCredentials && serverUrl != null)
             {
-                server = new SketchServerClient(settings.ServerUrl, settings.ServerAppId, settings.ServerApiKey, settings.ServerFlushIntervalSeconds);
+                server = new SketchServerClient(serverUrl, settings.ServerAppId, settings.ServerApiKey, settings.ServerFlushIntervalSeconds);
                 server.Start();
                 SketchAnalytics.AddSink(server);
+                if (devBuild) SketchLog.Info("Sketch analytics: Development Build -> " + serverUrl + " (Firebase off).");
             }
             else if (settings.ServerEnabled)
             {
                 SketchLog.Warn("Sketch Server is enabled but URL / App Id / API key is missing; server analytics off.");
             }
+            if (SketchAnalyticsRouting.ExternalSinksAllowed(devBuild))
             foreach (var factory in SketchSdkModules.AnalyticsSinkFactories)
             {
                 try

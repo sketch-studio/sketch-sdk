@@ -20,6 +20,8 @@ namespace Sketch.Sdk
         public const string PLACEMENTS = "sketch_ads_placements";
         /// <summary>Comma-separated app versions with ads off (Bounce upAppVersion). Rewarded keeps working.</summary>
         public const string ADS_OFF_VERSION = "sketch_ads_off_version";
+        /// <summary>Seconds before the native in-rect close can be tapped (OR-879; default SketchSdkSettings.NativeCloseDelaySeconds).</summary>
+        public const string NATIVE_CLOSE_DELAY = "sketch_native_close_delay";
 
         /// <summary>Returns a new settings object: source values overlaid by the remote keys present in values.</summary>
         public static SketchAdsPolicySettings Apply(SketchAdsPolicySettings source, SketchConfigValues values)

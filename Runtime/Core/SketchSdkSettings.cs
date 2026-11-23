@@ -66,6 +66,8 @@ namespace Sketch.Sdk
         public SketchAdMobContentRating MaxContentRating = SketchAdMobContentRating.General;
         [Tooltip("Seconds the native ad may take to attach before it is closed as LoadFailed (0 = no limit).")]
         public float NativeAttachTimeoutSeconds = 3f;
+        [Tooltip("Seconds before the native in-rect close (X) can be tapped (0 = at once). Remote key sketch_native_close_delay overrides it.")]
+        public float NativeCloseDelaySeconds = SketchNativeClose.DEFAULT_COUNTDOWN_SECONDS;
 
         [Header("Ad pacing (remote config keys override these, see README)")]
         public SketchAdsPolicySettings Pacing = new SketchAdsPolicySettings();
@@ -81,6 +83,8 @@ namespace Sketch.Sdk
         [Header("Sketch Server (analytics, remote config, revenue)")]
         public bool ServerEnabled;
         public string ServerUrl = "https://api.sketchapi.win/api/v1";
+        [Tooltip("Development Builds send analytics here instead (empty = they send nothing). Firebase is off in Development Builds.")]
+        public string DevServerUrl = "https://dev-api.sketchapi.win/api/v1";
         [Tooltip("App id shown in the Sketch dashboard (Admin > Apps).")]
         public string ServerAppId = "";
         [Tooltip("App API key (sgk_...) shown once when the app was created.")]

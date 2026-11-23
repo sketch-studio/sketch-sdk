@@ -33,5 +33,16 @@ namespace Sketch.Sdk
             sink is ISketchRoutedSink routed ? routed.Route : SketchAnalyticsRoute.Other;
 
         public static bool Accepts(SketchAnalyticsRoute mask, ISketchAnalyticsSink sink) => (mask & RouteOf(sink)) != 0;
+
+        /// <summary>OR-873: a Development Build sends to the dev server only (null = send nothing, never production).</summary>
+        public static string ServerUrl(SketchSdkSettings settings, bool developmentBuild)
+        {
+            if (settings == null) return null;
+            string url = developmentBuild ? settings.DevServerUrl : settings.ServerUrl;
+            return string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+        }
+
+        /// <summary>OR-873: Firebase and other module sinks only in release builds, so test play never reaches live data.</summary>
+        public static bool ExternalSinksAllowed(bool developmentBuild) => !developmentBuild;
     }
 }

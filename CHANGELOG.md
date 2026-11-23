@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.6
+- Sync of fixes made in a game's embedded copy back to the source repo (from now on SDK changes are made here and consumed via Package Manager).
+- Native in-rect close: configurable countdown `SketchSdkSettings.NativeCloseDelaySeconds` (remote `sketch_native_close_delay`, 0 = tappable at once), `SketchNativeClose.CountdownSeconds`/`ResolveCountdown`; Editor fake view and AdMob provider use it.
+- Analytics: Development Builds send to `SketchSdkSettings.DevServerUrl` only and never to Firebase (`SketchAnalyticsRouting.ServerUrl`/`ExternalSinksAllowed`, OR-873).
+- Consent: `SketchSdkSettings.PrivacyPolicyUrl`, `SketchConsent.HasPrivacyEntry`, `SketchConsent.OpenPrivacy` (UMP privacy options where required, else the policy page).
+- Editor fake store: transaction ids unique per session (no "Transaction ID was already used" pending purchases).
+- Splash builder: CanvasScaler Expand, match width.
+- Tests: ad audio pause, analytics routing, native close countdown.
+
 ## 1.4.5
 - Editor never sends analytics, revenue or IAP to the server or Firebase (owner OR-818): `#if UNITY_EDITOR` only the debug sink runs and always prints `[SketchSdk][Editor only, not sent]` per event; device builds log normally. Test real logging with a device build.
 - Server `appVersion` is now the bundle version code (1, 2, 3...) via `SketchAppVersion.Code` (OR-820), baked into `SketchSdkSettings.BuildVersionCode` by `SketchBuildVersionBaker` before every build; `sketch_session_start` carries `app_version` (code), `version_name` and `sdk_version`. Dashboard From/To Version filter uses plain integers.

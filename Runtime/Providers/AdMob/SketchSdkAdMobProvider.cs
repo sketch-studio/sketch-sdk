@@ -590,7 +590,7 @@ namespace Sketch.Sdk
                 LogAd("ad_impression", "native", _config.NativeId);
                 _nativeCallbacks?.Shown();
                 SketchAndroidNative.ReleasePlayback();
-                SketchAndroidNative.StartCloseCountdown(SketchNativeClose.COUNTDOWN_SECONDS, SketchNativeClose.CountdownEnabled,
+                SketchAndroidNative.StartCloseCountdown(SketchNativeClose.CountdownSeconds, SketchNativeClose.CountdownEnabled,
                     SketchNativeClose.NextOnLeft());
             };
             SketchAndroidNative.UserClosed += () =>

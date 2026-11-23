@@ -17,6 +17,7 @@ namespace Sketch.Sdk
         readonly List<SketchStoreOrder> _buffer = new List<SketchStoreOrder>();
         SketchIapCatalog _catalog;
         int _nextTransaction;
+        readonly string _session = System.Guid.NewGuid().ToString("N").Substring(0, 8);
 
         public SketchFakeStoreOutcome Outcome { get; set; } = SketchFakeStoreOutcome.Success;
         public bool SimulateInitFailure { get; set; }
@@ -133,7 +134,9 @@ namespace Sketch.Sdk
         SketchStoreOrder NewOrder(SketchIapProduct product)
         {
             _nextTransaction++;
-            string transactionId = "fake-" + _nextTransaction.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            // Unique across sessions: a wallet keeps receipts, so a restarting "fake-1" collided with an older order
+            // ("Transaction ID was already used") and every later Editor purchase stayed pending.
+            string transactionId = "fake-" + _session + "-" + _nextTransaction.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var order = new SketchStoreOrder
             {
                 ProductId = product.Id,

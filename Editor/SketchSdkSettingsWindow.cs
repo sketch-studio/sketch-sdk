@@ -16,11 +16,11 @@ namespace Sketch.Sdk.Editor
         public static readonly string[] DRAWN_FIELDS =
         {
             "AutoInitialize", "VerboseLogs", "Android", "Ios", "TestAdsInDevelopmentBuild", "ForceTestAds", "TestDeviceIds",
-            "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "Pacing",
+            "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
             "Pacing.AppOpenOnResume", "Pacing.AppOpenOnColdStart", "Pacing.AppOpenStartDelaySeconds", "Pacing.AppOpenMinBackgroundSeconds",
-            "Pacing.AppOpenAfterFullscreenSeconds", "RequestConsent", "ConsentDebugGeography", "ServerEnabled", "ServerUrl", "ServerAppId",
+            "Pacing.AppOpenAfterFullscreenSeconds", "RequestConsent", "ConsentDebugGeography", "ServerEnabled", "ServerUrl", "DevServerUrl", "ServerAppId",
             "ServerApiKey", "ServerFlushIntervalSeconds", "ServerRemoteConfig", "RemoteConfigTimeoutSeconds", "FirebaseAnalytics",
             "FirebaseLogAdImpression", "RemoteDefaults", "RevenueMilestonesUsd", "IosAppStoreId", "BuildVersionCode",
         };
@@ -313,6 +313,7 @@ namespace Sketch.Sdk.Editor
                 Field("Pacing.AppOpenMinBackgroundSeconds", "Min background time (s)", "The app must stay in background this long before a resume ad.", SketchAdsRemoteKeys.APP_OPEN_MIN_BACKGROUND);
                 Field("Pacing.AppOpenAfterFullscreenSeconds", "Quiet after fullscreen (s)", "No app-open ad this many seconds after any fullscreen ad closes.", SketchAdsRemoteKeys.APP_OPEN_AFTER_FULLSCREEN);
                 Field("NativeAttachTimeoutSeconds", "Native attach timeout (s)", "A native ad that does not attach in time closes as LoadFailed (0 = no limit).");
+                Field("NativeCloseDelaySeconds", "Native close delay (s)", "Seconds before the native in-rect close (X) can be tapped (0 = at once, max 30).", SketchAdsRemoteKeys.NATIVE_CLOSE_DELAY);
                 SketchEditorStyles.EndSection();
             }
 
@@ -511,6 +512,7 @@ namespace Sketch.Sdk.Editor
                 using (new EditorGUI.DisabledScope(!_settings.ServerEnabled))
                 {
                     Field("ServerUrl", "Server URL", "Default https://api.sketchapi.win/api/v1. Must be https on Android.");
+                    Field("DevServerUrl", "Dev server URL (Development Builds)", "Development Builds send analytics here instead of production and never to Firebase. Empty = they send nothing.");
                     Field("ServerAppId", "App Id", "Shown in the Sketch dashboard (Admin > Apps).");
                     ApiKeyField();
                     Field("ServerFlushIntervalSeconds", "Upload every (s)", "Seconds between event uploads.");

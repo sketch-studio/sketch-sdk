@@ -98,7 +98,8 @@ namespace Sketch.Sdk.Splash.Editor
             CanvasScaler scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = ReferenceResolution;
-            scaler.matchWidthOrHeight = 0.5f;
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand; // narrow phones keep the full reference width
+            scaler.matchWidthOrHeight = 0f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
             Image background = CreateImage("Background", canvasGo.transform, null);

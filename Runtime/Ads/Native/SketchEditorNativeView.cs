@@ -7,8 +7,8 @@ namespace Sketch.Sdk
 {
     /// <summary>
     /// Editor stand-in for the Android custom native layout (SketchAdmobNative.java): white panel at the exact screen
-    /// rect, the same 26 dp round countdown close 6 dp inside the top corner (3 right : 1 left), dimmed ring + X with a
-    /// bright arc growing clockwise for 3 s, then bright and tappable. Only the user closes it. Own overlay canvas, so
+    /// rect, the same 26 dp round countdown close 6 dp inside the top-right corner, dimmed ring + X with a bright arc
+    /// growing clockwise for SketchNativeClose.CountdownSeconds (0 = tappable at once), then bright and tappable. Only the user closes it. Own overlay canvas, so
     /// the panel eats taps like the device overlay. Never compiled into players.
     /// </summary>
     public sealed class SketchEditorNativeView : MonoBehaviour
@@ -25,6 +25,7 @@ namespace Sketch.Sdk
         Image _track, _trackEdge, _arc, _arcEdge, _glyphA, _glyphB, _glyphEdgeA, _glyphEdgeB;
         Button _close;
         float _remaining;
+        int _countdown;
         bool _ready;
 
         public static bool Enabled
@@ -92,8 +93,9 @@ namespace Sketch.Sdk
             LastCloseRect = closeRect;
             LastCloseOnLeft = onLeft;
             BuildClose(closeRect, density);
-            _remaining = SketchNativeClose.COUNTDOWN_SECONDS;
-            _ready = !SketchNativeClose.CountdownEnabled && SketchNativeClose.COUNTDOWN_SECONDS <= 0;
+            _countdown = SketchNativeClose.CountdownSeconds;
+            _remaining = _countdown;
+            _ready = _countdown <= 0;
             Refresh();
         }
 
@@ -138,7 +140,7 @@ namespace Sketch.Sdk
 
         void Refresh()
         {
-            float remaining = Mathf.Clamp01(_remaining / Mathf.Max(1f, SketchNativeClose.COUNTDOWN_SECONDS));
+            float remaining = Mathf.Clamp01(_remaining / Mathf.Max(1f, _countdown));
             float track = _ready ? 1f : TRACK_ALPHA_WAITING;
             SetAlpha(_trackEdge, track);
             SetAlpha(_track, track);

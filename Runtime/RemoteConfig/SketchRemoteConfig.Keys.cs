@@ -50,6 +50,8 @@ namespace Sketch.Sdk
                 SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.APP_OPEN_AFTER_FULLSCREEN, p.AppOpenAfterFullscreenSeconds, "No app-open ad this many seconds after any fullscreen ad."),
                 SketchRemoteKeyDef.Json(SketchAdsRemoteKeys.PLACEMENTS, "[]", "Per-placement interstitial rules, e.g. [{\"placement\":\"level_end\",\"enabled\":true,\"min_session\":2,\"cooldown\":45}]."),
                 SketchRemoteKeyDef.String(SketchAdsRemoteKeys.ADS_OFF_VERSION, p.AdsOffVersions ?? string.Empty, "Comma-separated app versions with ads off (rewarded keeps working)."),
+                SketchRemoteKeyDef.Float(SketchAdsRemoteKeys.NATIVE_CLOSE_DELAY, settings != null ? settings.NativeCloseDelaySeconds : SketchNativeClose.DEFAULT_COUNTDOWN_SECONDS,
+                    "Seconds before the native in-rect close (X) can be tapped (0 = at once, max 30)."),
                 SketchRemoteKeyDef.Bool(SketchNotificationsRemoteKeys.ENABLED, true, "Kill switch for local notifications (false = none scheduled)."),
                 SketchRemoteKeyDef.Int(SketchAppUpdatePolicy.FORCE_MIN_VERSION_CODE_KEY, 0, "Force an immediate update when the installed versionCode is below this (0 = off)."),
             };
