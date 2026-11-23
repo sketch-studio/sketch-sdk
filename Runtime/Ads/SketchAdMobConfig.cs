@@ -21,6 +21,9 @@ namespace Sketch.Sdk
     public interface ISketchNamedBannerProvider
     {
         bool SetBannerRequested(string name, bool requested);
+        string GetBannerName(int index);
+        bool PreloadBanner(string name);
+        void PreloadAllBanners();
         void SetAllBannersRequested(bool requested);
         bool ReleaseBanner(string name);
         void ReleaseAllBanners();

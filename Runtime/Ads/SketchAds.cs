@@ -350,6 +350,20 @@ namespace Sketch.Sdk
         public static bool HideBanner(string name) =>
             SketchSdk.Provider is ISketchNamedBannerProvider provider && provider.SetBannerRequested(name, false);
 
+        public static bool ShowBannerAt(int index) =>
+            SketchSdk.Provider is ISketchNamedBannerProvider provider && provider.SetBannerRequested(provider.GetBannerName(index), true);
+
+        public static bool HideBannerAt(int index) =>
+            SketchSdk.Provider is ISketchNamedBannerProvider provider && provider.SetBannerRequested(provider.GetBannerName(index), false);
+
+        public static bool PreloadBanner(string name) =>
+            SketchSdk.Provider is ISketchNamedBannerProvider provider && provider.PreloadBanner(name);
+
+        public static void PreloadAllNamedBanners()
+        {
+            if (SketchSdk.Provider is ISketchNamedBannerProvider provider) provider.PreloadAllBanners();
+        }
+
         public static void ShowAllNamedBanners()
         {
             if (SketchSdk.Provider is ISketchNamedBannerProvider provider) provider.SetAllBannersRequested(true);

@@ -49,6 +49,7 @@ namespace Sketch.Sdk
             public string Id;
             public BannerView View;
             public bool Requested;
+            public bool Preload;
             public bool Visible;
             public bool Loaded;
             public double RetryAt;
@@ -732,6 +733,31 @@ namespace Sketch.Sdk
             return true;
         }
 
+        public string GetBannerName(int index)
+        {
+            var slots = _config.BannerSlots;
+            return slots != null && index >= 0 && index < slots.Length ? slots[index]?.Name : null;
+        }
+
+        public bool PreloadBanner(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || !_namedBanners.TryGetValue(name.Trim(), out var state)) return false;
+            state.Preload = true;
+            if (_initialized) UpdateNamedBanner(state, SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix), Now);
+            return true;
+        }
+
+        public void PreloadAllBanners()
+        {
+            double now = Now;
+            bool allowed = _initialized && SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix);
+            foreach (var state in _namedBanners.Values)
+            {
+                state.Preload = true;
+                if (_initialized) UpdateNamedBanner(state, allowed, now);
+            }
+        }
+
         public void SetAllBannersRequested(bool requested)
         {
             double now = Now;
@@ -759,7 +785,7 @@ namespace Sketch.Sdk
         {
             BannerView view = state.View;
             state.View = null;
-            state.Loaded = state.Requested = state.Visible = false;
+            state.Loaded = state.Requested = state.Preload = state.Visible = false;
             state.RetryAt = 0;
             state.Failures = 0;
             view?.Destroy();
@@ -767,7 +793,7 @@ namespace Sketch.Sdk
 
         void UpdateNamedBanner(NamedBanner state, bool allowed, double now)
         {
-            if (state.View == null && state.Requested && allowed && now >= state.RetryAt)
+            if (state.View == null && (state.Requested || state.Preload) && allowed && now >= state.RetryAt)
                 LoadNamedBanner(state);
             bool show = state.Requested && allowed && state.Loaded;
             if (show == state.Visible) return;
