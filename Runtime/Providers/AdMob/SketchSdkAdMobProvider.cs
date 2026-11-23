@@ -1,5 +1,6 @@
 #if SKETCHSDK_ADMOB
 using System;
+using System.Collections.Generic;
 using GoogleMobileAds.Api;
 using UnityEngine;
 using Sketch.Sdk;
@@ -7,7 +8,7 @@ using Sketch.Sdk;
 namespace Sketch.Sdk
 {
     public sealed class SketchSdkAdMobProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchAdCloseCapability,
-        ISketchRewardedInterstitialProvider
+        ISketchRewardedInterstitialProvider, ISketchNamedBannerProvider
     {
         readonly SketchAdMobConfig _config;
         readonly ISketchAdsTelemetry _telemetry;
@@ -39,6 +40,20 @@ namespace Sketch.Sdk
         float _bannerHeightPixels;
         int _bannerGeneration;
         float _lastPublishedBannerHeight;
+        readonly Dictionary<string, NamedBanner> _namedBanners = new Dictionary<string, NamedBanner>(StringComparer.Ordinal);
+        double _nextNamedBannerCheck;
+
+        sealed class NamedBanner
+        {
+            public SketchAdMobBannerSlot Config;
+            public string Id;
+            public BannerView View;
+            public bool Requested;
+            public bool Visible;
+            public bool Loaded;
+            public double RetryAt;
+            public int Failures;
+        }
 
         public SketchSdkAdMobProvider(SketchAdMobConfig config, ISketchAdsTelemetry telemetry = null)
         {
@@ -46,6 +61,23 @@ namespace Sketch.Sdk
             _telemetry = telemetry;
             SketchSdk.NativeAttachTimeoutSeconds = config.NativeAttachTimeoutSeconds;
             SketchNativeLayout.DeviceScaleProvider = () => MobileAds.Utils.GetDeviceScale();
+            foreach (var slot in config.BannerSlots ?? Array.Empty<SketchAdMobBannerSlot>())
+            {
+                if (slot == null || string.IsNullOrWhiteSpace(slot.Name)) continue;
+                string name = slot.Name.Trim();
+#if UNITY_IOS
+                const bool ios = true;
+#else
+                const bool ios = false;
+#endif
+                string id = ios ? slot.IosId : slot.AndroidId;
+                if (string.IsNullOrWhiteSpace(id) || _namedBanners.ContainsKey(name)) continue;
+                _namedBanners.Add(name, new NamedBanner
+                {
+                    Config = slot,
+                    Id = config.UseTestBannerSlots ? SketchAdMobTestIds.Banner(ios) : id.Trim()
+                });
+            }
         }
 
         // Android: Sketch custom native layout (SketchAdmobNative.java) draws its own countdown close; elsewhere the GMA template has none.
@@ -675,6 +707,13 @@ namespace Sketch.Sdk
         void TickReloads()
         {
             double now = Now;
+            if (_namedBanners.Count > 0 && now >= _nextNamedBannerCheck)
+            {
+                _nextNamedBannerCheck = now + 0.5;
+                bool allowed = SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix);
+                foreach (var state in _namedBanners.Values)
+                    UpdateNamedBanner(state, allowed, now);
+            }
             if (_rewarded == null && !_rewardedLoading && now >= _rewardedRetryAt) LoadRewarded();
             if (_interstitial == null && !_interstitialLoading && now >= _interstitialRetryAt) LoadInterstitial();
             if (_rewardedInterstitial == null && !_riLoading && now >= _riRetryAt) LoadRewardedInterstitial();
@@ -683,6 +722,68 @@ namespace Sketch.Sdk
                 _bannerRetryAt = double.MaxValue;
                 try { _banner.LoadAd(NewRequest()); } catch (Exception e) { Debug.LogWarning($"[SketchAds] Banner reload threw: {e.Message}"); }
             }
+        }
+
+        public bool SetBannerRequested(string name, bool requested)
+        {
+            if (string.IsNullOrWhiteSpace(name) || !_namedBanners.TryGetValue(name.Trim(), out var state)) return false;
+            state.Requested = requested;
+            if (_initialized) UpdateNamedBanner(state, SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix), Now);
+            return true;
+        }
+
+        void UpdateNamedBanner(NamedBanner state, bool allowed, double now)
+        {
+            if (state.View == null && state.Requested && allowed && now >= state.RetryAt)
+                LoadNamedBanner(state);
+            bool show = state.Requested && allowed && state.Loaded;
+            if (show == state.Visible) return;
+            state.Visible = show;
+            if (show) state.View.Show();
+            else state.View?.Hide();
+        }
+
+        void LoadNamedBanner(NamedBanner state)
+        {
+            SketchAdMobBannerSlot config = state.Config;
+            int width = config.AdaptiveWidth > 0 ? config.AdaptiveWidth : AdSize.FullWidth;
+            AdSize size = config.Size switch
+            {
+                SketchBannerSize.Standard => AdSize.Banner,
+                SketchBannerSize.MediumRectangle => AdSize.MediumRectangle,
+                SketchBannerSize.IabBanner => AdSize.IABBanner,
+                SketchBannerSize.Leaderboard => AdSize.Leaderboard,
+                _ => config.Orientation switch
+                {
+                    SketchBannerOrientation.Portrait => AdSize.GetPortraitAnchoredAdaptiveBannerAdSizeWithWidth(width),
+                    SketchBannerOrientation.Landscape => AdSize.GetLandscapeAnchoredAdaptiveBannerAdSizeWithWidth(width),
+                    _ => AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(width)
+                }
+            };
+            var position = Enum.TryParse(config.Position.ToString(), out AdPosition parsed) ? parsed : AdPosition.Bottom;
+            var view = new BannerView(state.Id, size, position);
+            state.View = view;
+            view.OnBannerAdLoaded += () => OnMainThread(() =>
+            {
+                if (state.View != view) return;
+                state.Loaded = true;
+                state.Failures = 0;
+                UpdateNamedBanner(state, SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix), Now);
+            });
+            view.OnBannerAdLoadFailed += _ => OnMainThread(() =>
+            {
+                if (state.View != view) return;
+                state.View = null;
+                state.Loaded = state.Visible = false;
+                state.RetryAt = Now + Backoff(++state.Failures);
+                view.Destroy();
+            });
+            view.OnAdPaid += value => OnMainThread(() =>
+            {
+                if (state.View == view) ReportPaid("banner", value, state.Id, SafeInfo(view.GetResponseInfo));
+            });
+            view.Hide();
+            view.LoadAd(NewRequest());
         }
 
         void LoadRewarded()

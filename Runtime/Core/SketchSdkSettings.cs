@@ -86,6 +86,7 @@ namespace Sketch.Sdk
         [Header("AdMob")]
         public SketchAdUnitIds Android = new SketchAdUnitIds();
         public SketchAdUnitIds Ios = new SketchAdUnitIds();
+        public List<SketchAdMobBannerSlot> AdMobBannerSlots = new List<SketchAdMobBannerSlot>();
         [Tooltip("Use Google's official test ad units in Editor and development builds (never risk your AdMob account while testing).")]
         public bool TestAdsInDevelopmentBuild = true;
         [Tooltip("Use Google's test ad units everywhere, also release builds. For internal test builds only.")]
@@ -189,6 +190,8 @@ namespace Sketch.Sdk
             return new SketchAdMobConfig
             {
                 BannerId = Pick(ids.Banner, test, SketchAdMobTestIds.Banner(ios)),
+                BannerSlots = AdMobBannerSlots?.ToArray() ?? Array.Empty<SketchAdMobBannerSlot>(),
+                UseTestBannerSlots = test,
                 InterstitialId = Pick(ids.Interstitial, test, SketchAdMobTestIds.Interstitial(ios)),
                 RewardedId = Pick(ids.Rewarded, test, SketchAdMobTestIds.Rewarded(ios)),
                 AppOpenId = Pick(ids.AppOpen, test, SketchAdMobTestIds.AppOpen(ios)),

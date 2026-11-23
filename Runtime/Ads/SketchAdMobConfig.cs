@@ -2,12 +2,35 @@ using System;
 
 namespace Sketch.Sdk
 {
+    public enum SketchBannerPosition { Bottom, Top, BottomLeft, BottomRight, TopLeft, TopRight, Center }
+    public enum SketchBannerSize { Adaptive, Standard, MediumRectangle, IabBanner, Leaderboard }
+    public enum SketchBannerOrientation { Current, Portrait, Landscape }
+
+    [Serializable]
+    public sealed class SketchAdMobBannerSlot
+    {
+        public string Name = "";
+        public string AndroidId = "";
+        public string IosId = "";
+        public SketchBannerPosition Position = SketchBannerPosition.Bottom;
+        public SketchBannerSize Size = SketchBannerSize.Adaptive;
+        public SketchBannerOrientation Orientation;
+        public int AdaptiveWidth;
+    }
+
+    public interface ISketchNamedBannerProvider
+    {
+        bool SetBannerRequested(string name, bool requested);
+    }
+
     /// <summary>Runtime values mapped from a game-owned config asset or bootstrap.</summary>
     public sealed class SketchAdMobConfig
     {
         public string RewardedId { get; set; }
         public string InterstitialId { get; set; }
         public string BannerId { get; set; }
+        public SketchAdMobBannerSlot[] BannerSlots { get; set; } = Array.Empty<SketchAdMobBannerSlot>();
+        public bool UseTestBannerSlots { get; set; }
         public string AppOpenId { get; set; }
         public string NativeId { get; set; }
         public string RewardedInterstitialId { get; set; }
@@ -24,6 +47,7 @@ namespace Sketch.Sdk
 
         public static bool HasAnyAdUnit(SketchAdMobConfig config) => config != null &&
             (IsUsableId(config.RewardedId) || IsUsableId(config.InterstitialId) || IsUsableId(config.BannerId) ||
-             IsUsableId(config.AppOpenId) || IsUsableId(config.NativeId) || IsUsableId(config.RewardedInterstitialId));
+             IsUsableId(config.AppOpenId) || IsUsableId(config.NativeId) || IsUsableId(config.RewardedInterstitialId) ||
+             (config.BannerSlots != null && config.BannerSlots.Length > 0));
     }
 }

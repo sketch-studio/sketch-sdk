@@ -18,6 +18,7 @@ namespace Sketch.Sdk.Editor
             "AutoInitialize", "VerboseLogs", "Android", "Ios", "TestAdsInDevelopmentBuild", "ForceTestAds", "TestDeviceIds",
             "AdsBackend", "LevelPlayAndroid", "LevelPlayIos", "MaxAndroid", "MaxIos", "LiftoffAndroid", "LiftoffIos",
             "IosTrackingUsageDescription", "PrivacyPolicyUrl",
+            "AdMobBannerSlots",
             "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
@@ -308,6 +309,7 @@ namespace Sketch.Sdk.Editor
                 IdField(root + ".AppOpen", "App Open", false, "Shown on cold start (splash) and on resume.");
                 IdField(root + ".Native", "Native", false, "Native ad inside a popup rect.");
                 IdField(root + ".RewardedInterstitial", "Rewarded Interstitial", false, "Fullscreen reward ad; needs an intro screen with opt-out.");
+                EditorGUILayout.PropertyField(_so.FindProperty("AdMobBannerSlots"), true);
                 GUILayout.Space(2);
                 if (GUILayout.Button("Open AdMob console", GUILayout.Width(150))) Application.OpenURL(ADMOB_URL);
                 SketchEditorStyles.EndSection();
