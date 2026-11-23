@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.2
+- Preload, show, hide and release AdMob banner slots individually or as a group. Show and hide also accept the configured slot index.
+- Verify that the app-open count survives reloading the game's store and resets at the configured threshold.
+- Keep remove-ads PlayMode checks isolated from the saved entitlement.
+
 ## 1.5.1
 - Named AdMob banners support separate platform IDs, size, position and adaptive width.
 - Optional app-open cadence and presentation delay. The game can supply durable storage for the counter.
