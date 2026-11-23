@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.3
+- Optional legacy FCM registration tokens for existing game backends.
+- Register a custom consent provider with standalone ads or use the built-in UMP adapter with AdMob.
+- Refresh consent from the game through the same flow as automatic retry.
+
 ## 1.5.2
 - Preload, show, hide and release AdMob banner slots individually or as a group. Show and hide also accept the configured slot index.
 - Verify that the app-open count survives reloading the game's store and resets at the configured threshold.
