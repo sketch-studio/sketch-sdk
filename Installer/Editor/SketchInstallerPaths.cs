@@ -6,7 +6,7 @@ namespace Sketch.Sdk.Installer
         public const string ARCHIVE_URL_FORMAT = "https://github.com/sketch-studio/sketch-sdk/archive/refs/tags/{0}.zip";
         public const string INSTALL_ROOT = "Assets/SketchSdk";
         public const string MANIFEST_PATH = INSTALL_ROOT + "/.sketch-install.txt";
-        public const string BACKUP_ROOT = "Assets/SketchSdk~backup";
+        public const string BACKUP_ROOT = "SketchSdkBackups~";
         public const string SPLASH_SCENE_RELATIVE_PATH = "Splash/SketchSplash.unity";
         public const string SPLASH_SCENE_PATH = INSTALL_ROOT + "/" + SPLASH_SCENE_RELATIVE_PATH;
         public const string BUILD_SPLASH_MENU = "Sketch SDK/Build Splash Scene";
