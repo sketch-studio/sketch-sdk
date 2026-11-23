@@ -36,6 +36,7 @@ namespace Sketch.Sdk
         public event Action<SketchStoreOrder> OrderReceived;
         public event Action<string, SketchIapResultStatus, string> PurchaseFailed;
         public event Action<string> PurchaseDeferred;
+        public event Action<string, EntitlementStatus> EntitlementChecked;
 
         public SketchUnityIapProvider() { }
 
@@ -122,6 +123,31 @@ namespace Sketch.Sdk
         }
 
         public bool IsOwned(string productId) => !string.IsNullOrEmpty(productId) && _owned.Contains(productId);
+
+        /// <summary>Requests the store's current status for a durable product. The game owns any entitlement revocation.</summary>
+        public bool CheckEntitlement(string productId)
+        {
+            if (_disposed || !IsReady || _controller == null || string.IsNullOrEmpty(productId) ||
+                !_products.TryGetValue(productId, out var product) || product.type == ProductType.Consumable) return false;
+            try
+            {
+                _controller.CheckEntitlement(product);
+                return true;
+            }
+            catch (Exception error)
+            {
+                SketchLog.Warn("Unity IAP entitlement check failed: " + error.Message);
+                return false;
+            }
+        }
+
+        void OnCheckEntitlement(string storeName, Entitlement entitlement)
+        {
+            if (!IsOurs(storeName)) return;
+            string id = entitlement?.Product?.uSku;
+            if (string.IsNullOrEmpty(id) || !_products.ContainsKey(id)) return;
+            EntitlementChecked?.Invoke(id, entitlement.Status);
+        }
 
         public string GetLocalizedPrice(string productId)
         {
@@ -365,6 +391,7 @@ namespace Sketch.Sdk
             controller.OnPurchaseConfirmed += OnPurchaseConfirmed;
             controller.OnPurchaseFailed += OnPurchaseFailed;
             controller.OnPurchaseDeferred += OnPurchaseDeferred;
+            controller.OnCheckEntitlement += OnCheckEntitlement;
         }
 
         void Unsubscribe(PurchasingController controller)
@@ -379,6 +406,7 @@ namespace Sketch.Sdk
             controller.OnPurchaseConfirmed -= OnPurchaseConfirmed;
             controller.OnPurchaseFailed -= OnPurchaseFailed;
             controller.OnPurchaseDeferred -= OnPurchaseDeferred;
+            controller.OnCheckEntitlement -= OnCheckEntitlement;
         }
 
         public void Dispose()
@@ -390,6 +418,7 @@ namespace Sketch.Sdk
             _catalog = null;
             _onInitialized = null;
             _onRestored = null;
+            EntitlementChecked = null;
             IsReady = false;
             _products.Clear();
             _pending.Clear();
