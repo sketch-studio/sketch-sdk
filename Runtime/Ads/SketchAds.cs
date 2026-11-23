@@ -39,8 +39,11 @@ namespace Sketch.Sdk
 
         // ---------------- remove ads ----------------
 
-        /// <summary>Remove-ads purchased: no banner, interstitial, app open or native. Rewarded and rewarded interstitial keep working.</summary>
+        /// <summary>Remove-ads purchased (the entitlement). Which formats it blocks is SketchAdsPolicySettings.RemoveAdsBlocks.</summary>
         public static bool IsAdsRemoved => Policy.AdsRemoved;
+
+        /// <summary>True when the remove-ads purchase is owned and the configured scope blocks this format.</summary>
+        public static bool IsAdsRemovedFor(SketchRemoveAdsScope format) => Policy.IsRemoved(format);
 
         /// <summary>Default remove-ads store (SDK 1.2 key), kept for backward compatibility with existing saves.</summary>
         sealed class PlayerPrefsAdsRemovedStore : ISketchAdsRemovedStore
@@ -72,9 +75,12 @@ namespace Sketch.Sdk
             AdsRemovedStore.Save(removed);
             if (removed)
             {
-                if (_bannerShown) SketchSdk.HideBanner();
-                _bannerShown = false;
-                if (SketchSdk.IsNativeVisible) SketchSdk.HideNative();
+                if (Policy.IsRemoved(SketchRemoveAdsScope.Banner))
+                {
+                    if (_bannerShown) SketchSdk.HideBanner();
+                    _bannerShown = false;
+                }
+                if (Policy.IsRemoved(SketchRemoveAdsScope.Native) && SketchSdk.IsNativeVisible) SketchSdk.HideNative();
             }
             SketchAnalytics.Log("ads_removed", "removed", removed);
         }

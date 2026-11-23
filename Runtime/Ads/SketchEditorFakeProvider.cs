@@ -12,6 +12,14 @@ namespace Sketch.Sdk
     {
         public static bool SimulateNoFill;
         public static bool SimulateRewardSkipped;
+        /// <summary>Rewarded interstitial only: not loaded (IsReady false), so callers fall back to their plain interstitial.</summary>
+        public static bool SimulateRewardedInterstitialNoFill;
+        /// <summary>Rewarded interstitial only: the ad shows but the player closes it early (no reward).</summary>
+        public static bool SimulateRewardedInterstitialSkipped;
+        /// <summary>Rewarded only: not loaded (IsReady false), for "rewarded gone" fallback paths.</summary>
+        public static bool SimulateRewardedNoFill;
+        /// <summary>Interstitial only: not loaded (IsReady false), for "nothing can start" paths.</summary>
+        public static bool SimulateInterstitialNoFill;
 
         bool _bannerVisible;
         SketchNativeCallbacks _native;
@@ -24,7 +32,10 @@ namespace Sketch.Sdk
             onInitialized?.Invoke(true);
         }
 
-        public bool IsReady(SketchAdFormat format) => !SimulateNoFill;
+        public bool IsReady(SketchAdFormat format) =>
+            !SimulateNoFill && !(format == SketchAdFormat.RewardedInterstitial && SimulateRewardedInterstitialNoFill)
+            && !(format == SketchAdFormat.Rewarded && SimulateRewardedNoFill)
+            && !(format == SketchAdFormat.Interstitial && SimulateInterstitialNoFill);
 
         public void ShowRewarded(Action<bool> onComplete)
         {
@@ -34,8 +45,9 @@ namespace Sketch.Sdk
 
         public void ShowRewardedInterstitial(Action<bool> onComplete)
         {
-            SketchLog.Info("[FakeAds] Rewarded interstitial shown -> " + (SimulateRewardSkipped ? "skipped" : "granted"));
-            Fullscreen(() => onComplete?.Invoke(!SimulateRewardSkipped));
+            bool skipped = SimulateRewardSkipped || SimulateRewardedInterstitialSkipped;
+            SketchLog.Info("[FakeAds] Rewarded interstitial shown -> " + (skipped ? "skipped" : "granted"));
+            Fullscreen(() => onComplete?.Invoke(!skipped));
         }
 
         public void ShowInterstitial(Action onClosed)

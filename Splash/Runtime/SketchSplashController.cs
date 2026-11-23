@@ -25,9 +25,12 @@ namespace Sketch.Sdk.Splash
 
         [SerializeField] SketchSplashHook _hook;
         [SerializeField] Image _background;
+        [SerializeField] AspectRatioFitter _backgroundFitter;
         [SerializeField] Image _brand;
         [SerializeField] Text _title;
         [SerializeField] CanvasGroup _barGroup;
+        [SerializeField] Image _barTrack;
+        [SerializeField] RectTransform _barLabelSlot;
         [SerializeField] Image _barFill;
         [SerializeField] RectTransform _barFillRect;
 
@@ -232,15 +235,26 @@ namespace Sketch.Sdk.Splash
         {
             if (_background != null)
             {
-                _background.sprite = _hook.BackgroundSprite;
-                _background.color = _hook.BackgroundSprite != null ? Color.white : _hook.BackgroundColor;
+                Sprite bg = _hook.BackgroundSprite;
+                _background.sprite = bg;
+                _background.color = bg != null ? Color.white : _hook.BackgroundColor;
+                bool envelope = _hook.BackgroundEnvelope && bg != null && bg.rect.height > 0f && _backgroundFitter != null;
+                if (_backgroundFitter != null) _backgroundFitter.enabled = envelope;
+                if (envelope)
+                {
+                    _backgroundFitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+                    _backgroundFitter.aspectRatio = bg.rect.width / bg.rect.height;
+                }
+                else Stretch(_background.rectTransform, 0f);
             }
             if (_brand != null)
             {
                 _brand.sprite = _hook.BrandSprite;
                 _brand.preserveAspect = true;
                 _brand.enabled = _hook.BrandSprite != null;
+                Place(_brand.rectTransform, _hook.BrandAnchorY, _hook.BrandSize);
             }
+            ApplyBarLook();
             if (_title != null)
             {
                 _title.text = _hook.Title;
@@ -250,6 +264,79 @@ namespace Sketch.Sdk.Splash
             if (_barFill != null) _barFill.color = _hook.BarColor;
             if (_barGroup != null) _barGroup.alpha = 0f;
             SetFill(0f);
+        }
+
+        void ApplyBarLook()
+        {
+            if (_barGroup == null) return;
+            var barRect = (RectTransform)_barGroup.transform;
+            Place(barRect, _hook.BarAnchorY, _hook.BarSize);
+            if (_barTrack != null)
+            {
+                if (_hook.BarBackgroundSprite != null) _barTrack.sprite = _hook.BarBackgroundSprite;
+                _barTrack.type = HasBorder(_barTrack.sprite) ? Image.Type.Sliced : Image.Type.Simple;
+                _barTrack.color = _hook.BarBackgroundColor;
+            }
+            if (_barFill != null)
+            {
+                if (_hook.BarFillSprite != null) _barFill.sprite = _hook.BarFillSprite;
+                if (_barFill is SketchSlicedFillImage)
+                {
+                    // Full-width rect, fillAmount trims it: the 9-slice caps stay round at low values.
+                    _barFill.type = Image.Type.Filled;
+                    _barFill.fillMethod = Image.FillMethod.Horizontal;
+                    _barFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+                    Stretch(_barFill.rectTransform, _hook.BarFillInset);
+                }
+                else if (_barFillRect != null)
+                {
+                    float inset = _hook.BarFillInset;
+                    _barFillRect.offsetMin = new Vector2(inset, inset);
+                    _barFillRect.offsetMax = new Vector2(-inset, -inset);
+                }
+            }
+            GameObject labelPrefab = _hook.BarLabelPrefab;
+            if (labelPrefab != null)
+            {
+                // The slot hangs under the bar (inside the bar group, so it fades with it) and owns the label's padding.
+                RectTransform slot = _barLabelSlot != null ? _barLabelSlot : barRect;
+                if (_barLabelSlot != null)
+                {
+                    slot.anchorMin = Vector2.zero;
+                    slot.anchorMax = new Vector2(1f, 0f);
+                    slot.pivot = new Vector2(0.5f, 1f);
+                    slot.anchoredPosition = new Vector2(0f, -_hook.BarLabelGap);
+                    slot.sizeDelta = new Vector2(0f, _hook.BarLabelHeight);
+                }
+                // One-off at splash start (SDK-owned scene); the game authors the label look in its own prefab.
+                GameObject label = Instantiate(labelPrefab, slot, false);
+                label.name = labelPrefab.name;
+                if (label.transform is RectTransform labelRect)
+                {
+                    labelRect.anchorMin = labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    labelRect.anchoredPosition = Vector2.zero;
+                }
+            }
+        }
+
+        static bool HasBorder(Sprite sprite) => sprite != null && sprite.border != Vector4.zero;
+
+        static void Place(RectTransform rect, float anchorY, Vector2 size)
+        {
+            var anchor = new Vector2(0.5f, anchorY);
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = size;
+        }
+
+        static void Stretch(RectTransform rect, float inset)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = new Vector2(inset, inset);
+            rect.offsetMax = new Vector2(-inset, -inset);
         }
     }
 }

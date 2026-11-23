@@ -12,7 +12,7 @@ namespace Sketch.Sdk
     /// Sketch Server client (contract: sketch-server docs/sdk-contract.md): events batch, sessions, ad revenue, IAP, remote config.
     /// Persistent queue on disk, one request in flight, exponential retry, 4xx payload rejections dropped.
     /// </summary>
-    public sealed class SketchServerClient : ISketchAnalyticsSink
+    public sealed class SketchServerClient : ISketchAnalyticsSink, ISketchRoutedSink
     {
         [Serializable]
         sealed class QueueFile { public List<SketchServerItem> Items = new List<SketchServerItem>(); }
@@ -34,6 +34,7 @@ namespace Sketch.Sdk
         int _maxBatch = SketchServerQueue.MAX_BATCH;
 
         public static SketchServerClient Current { get; private set; }
+        public SketchAnalyticsRoute Route => SketchAnalyticsRoute.Server;
         public int PendingCount => _queue.Count;
         public string BaseUrl => _baseUrl;
 
@@ -70,7 +71,7 @@ namespace Sketch.Sdk
             Prop(b, "eventName", eventName);
             Prop(b, "occurredAt", SketchIdentity.IsoNow());
             Prop(b, "platform", SketchIdentity.Platform);
-            Prop(b, "appVersion", Application.version);
+            Prop(b, "appVersion", SketchAppVersion.Code);
             if (!string.IsNullOrEmpty(SketchRemoteConfig.ConfigId)) Prop(b, "configId", SketchRemoteConfig.ConfigId);
             b.Append("\"parameters\":");
             WriteParameters(b, parameters);
@@ -95,7 +96,7 @@ namespace Sketch.Sdk
             if (!string.IsNullOrEmpty(revenue.Placement)) Prop(b, "placement", Trunc(revenue.Placement, 128));
             Prop(b, "network", Trunc(string.IsNullOrEmpty(revenue.AdSource) ? revenue.Network ?? "admob" : revenue.AdSource, 64));
             Prop(b, "platform", SketchIdentity.Platform);
-            Prop(b, "appVersion", Application.version);
+            Prop(b, "appVersion", SketchAppVersion.Code);
             if (!string.IsNullOrEmpty(SketchRemoteConfig.ConfigId)) Prop(b, "configId", SketchRemoteConfig.ConfigId);
             // revenueUsd is the AdMob value in the account currency; currency carries the code so a non-USD account is not mislabeled.
             PropRaw(b, "revenueUsd", usd.ToString("0.##########", CultureInfo.InvariantCulture));
@@ -194,7 +195,7 @@ namespace Sketch.Sdk
             CommonIds(b, includeSession: false);
             Prop(b, "startedAt", SketchIdentity.Iso(SketchIdentity.SessionStartedUtc));
             Prop(b, "platform", SketchIdentity.Platform);
-            Prop(b, "appVersion", Application.version);
+            Prop(b, "appVersion", SketchAppVersion.Code);
             b.Append("\"metadata\":");
             WriteParameters(b, new Dictionary<string, object>
             {
@@ -202,6 +203,10 @@ namespace Sketch.Sdk
                 ["device_model"] = SystemInfo.deviceModel,
                 ["os"] = SystemInfo.operatingSystem,
                 ["memory_mb"] = SystemInfo.systemMemorySize,
+                ["country"] = CountryCode(),
+                ["locale"] = Application.systemLanguage.ToString(),
+                ["sdk_version"] = SketchSdkVersion.VERSION,
+                ["first_open"] = SketchIdentity.FirstOpenUnix,
             });
             b.Append('}');
             Enqueue("session", b.ToString());
@@ -217,7 +222,7 @@ namespace Sketch.Sdk
         void Tick()
         {
             double now = Now;
-            if (_dirty && now >= _nextSaveAt) { SaveQueue(); _nextSaveAt = now + 10; }
+            if (_dirty && now >= _nextSaveAt) { SaveQueue(background: true); _nextSaveAt = now + 10; }
             if (_inFlight || now < _retryAt || now < _nextFlushAt) return;
             if (!_queue.TryPeekRequest(out string kind, out List<SketchServerItem> items, _maxBatch))
             {
@@ -324,20 +329,45 @@ namespace Sketch.Sdk
             catch (Exception e) { SketchLog.Warn("Server queue load failed, starting empty: " + e.Message); }
         }
 
-        void SaveQueue()
+        static readonly object SaveGate = new object();
+        static string CountryCode()
+        {
+            // Same source as Bounce CountryUtils.GetCountryCode (RegionInfo.CurrentRegion, lower case).
+            try { return System.Globalization.RegionInfo.CurrentRegion.TwoLetterISORegionName.ToLowerInvariant(); }
+            catch { return string.Empty; }
+        }
+
+        void SaveQueue() => SaveQueue(background: false);
+
+        // Snapshot JSON on the main thread (JsonUtility is main-thread only), write the file on a worker thread so the
+        // periodic save never hitches a frame. Quit / focus-lost saves stay synchronous so they finish before suspension.
+        void SaveQueue(bool background)
         {
             if (!_dirty) return;
-            try
-            {
-                var file = new QueueFile { Items = new List<SketchServerItem>(_queue.Items) };
-                string tmp = _queuePath + ".tmp";
-                File.WriteAllText(tmp, JsonUtility.ToJson(file));
-                if (File.Exists(_queuePath)) File.Replace(tmp, _queuePath, null);
-                else File.Move(tmp, _queuePath);
-                _dirty = false;
-            }
-            catch (Exception e) { SketchLog.Warn("Server queue save failed: " + e.Message); }
+            string json;
+            try { json = JsonUtility.ToJson(new QueueFile { Items = new List<SketchServerItem>(_queue.Items) }); }
+            catch (Exception e) { SketchLog.Warn("Server queue snapshot failed: " + e.Message); return; }
+            _dirty = false;
+            string path = _queuePath;
+            if (!background) { WriteQueueFile(path, json); return; }
+            System.Threading.ThreadPool.QueueUserWorkItem(_ => WriteQueueFile(path, json));
         }
+
+        static void WriteQueueFile(string path, string json)
+        {
+            lock (SaveGate)
+            {
+                try
+                {
+                    string tmp = path + ".tmp";
+                    File.WriteAllText(tmp, json);
+                    if (File.Exists(path)) File.Replace(tmp, path, null);
+                    else File.Move(tmp, path);
+                }
+                catch (Exception e) { Debug.LogWarning("[SketchSdk] Server queue save failed: " + e.Message); }
+            }
+        }
+
 
         // ---------------- JSON helpers ----------------
 

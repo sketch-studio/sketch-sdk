@@ -18,6 +18,11 @@ namespace Sketch.Sdk
 
         /// <summary>When false every call is dropped (e.g. the player opted out).</summary>
         public static bool Enabled { get; set; } = true;
+        /// <summary>
+        /// Remote kill switch for events (remote key "log_enable", Bounce RemoteConfig.logEnable). Revenue and purchases
+        /// are never gated by it, exactly like Bounce (LogAdsRevenue / LogIAPRevenue ignore logEnable).
+        /// </summary>
+        public static bool EventsEnabled { get; set; } = true;
         /// <summary>Lifetime revenue thresholds in USD (from settings).</summary>
         public static IList<float> RevenueMilestonesUsd { get; set; }
         /// <summary>Raised after every event, for debug panels and tests.</summary>
@@ -33,7 +38,10 @@ namespace Sketch.Sdk
         public static void RemoveSink(ISketchAnalyticsSink sink) => Sinks.Remove(sink);
 
         /// <summary>Log an event with key/value pairs: Log("shop_open", "tab", "gems").</summary>
-        public static void Log(string eventName, params object[] keyValues)
+        public static void Log(string eventName, params object[] keyValues) =>
+            Log(eventName, ToParams(eventName, keyValues));
+
+        static Dictionary<string, object> ToParams(string eventName, object[] keyValues)
         {
             Dictionary<string, object> parameters = null;
             if (keyValues != null && keyValues.Length > 0)
@@ -46,12 +54,20 @@ namespace Sketch.Sdk
                 }
                 if (keyValues.Length % 2 != 0) SketchLog.Warn($"Log({eventName}): odd key/value count, last key ignored.");
             }
-            Log(eventName, parameters);
+            return parameters;
         }
 
-        public static void Log(string eventName, IDictionary<string, object> parameters)
+        /// <summary>Default route: every sink except Firebase (Firebase gets revenue only, owner OR-806).</summary>
+        public static void Log(string eventName, IDictionary<string, object> parameters) =>
+            LogTo(SketchAnalyticsRouting.DefaultEvents, eventName, parameters);
+
+        /// <summary>Log to the sinks in route only, e.g. LogTo(SketchAnalyticsRoute.All, "iap_start", ...).</summary>
+        public static void LogTo(SketchAnalyticsRoute route, string eventName, params object[] keyValues) =>
+            LogTo(route, eventName, ToParams(eventName, keyValues));
+
+        public static void LogTo(SketchAnalyticsRoute route, string eventName, IDictionary<string, object> parameters)
         {
-            if (!Enabled) return;
+            if (!Enabled || !EventsEnabled || route == SketchAnalyticsRoute.None) return;
             string name = SanitizeName(eventName);
             if (string.IsNullOrEmpty(name)) { SketchLog.Warn("Analytics event without a name dropped."); return; }
             IReadOnlyDictionary<string, object> safe = parameters == null
@@ -61,6 +77,7 @@ namespace Sketch.Sdk
             {
                 for (int i = 0; i < Sinks.Count; i++)
                 {
+                    if (!SketchAnalyticsRouting.Accepts(route, Sinks[i])) continue;
                     try { Sinks[i].LogEvent(name, safe); }
                     catch (Exception e) { SketchLog.Warn($"Sink {Sinks[i].GetType().Name} failed on {name}: {e.Message}"); }
                 }
@@ -95,9 +112,7 @@ namespace Sketch.Sdk
                     try { Sinks[i].LogPurchase(purchase); }
                     catch (Exception e) { SketchLog.Warn($"Sink {Sinks[i].GetType().Name} purchase failed: {e.Message}"); }
                 }
-                double usd = purchase.PriceUsd > 0 ? purchase.PriceUsd
-                    : string.Equals(purchase.Currency, "USD", StringComparison.OrdinalIgnoreCase) ? purchase.Price : 0;
-                if (usd > 0) AddLifetimeRevenue(usd);
+                // Bounce parity (BounceSdk.cs UpdateTotalAdsRevenueAndCheckMilestones): reach_rev_* counts AD revenue only.
             });
         }
 
@@ -117,8 +132,16 @@ namespace Sketch.Sdk
             double after = before + usd;
             PlayerPrefs.SetString(LTV_KEY, after.ToString("R", CultureInfo.InvariantCulture));
             SketchRevenueMilestones.Crossed(before, after, RevenueMilestonesUsd, Crossed);
-            for (int i = 0; i < Crossed.Count; i++)
-                Log(SketchRevenueMilestones.EventName(Crossed[i]), "value", (double)(decimal)Crossed[i], "currency", "USD");
+            // Bounce: FirebaseManager.Log("reach_rev_" + m) -> one Firebase event with param success=1, ascending order.
+            // Revenue signal, so it goes to Firebase (and the server) even when EventsEnabled is off.
+            bool events = EventsEnabled;
+            EventsEnabled = true;
+            try
+            {
+                for (int i = 0; i < Crossed.Count; i++)
+                    LogTo(SketchAnalyticsRoute.All, SketchRevenueMilestones.EventName(Crossed[i]), "success", 1);
+            }
+            finally { EventsEnabled = events; }
         }
 
         /// <summary>Server rule: letters, digits and '_', starting with a letter, max 80 chars.</summary>
@@ -145,6 +168,7 @@ namespace Sketch.Sdk
             Sinks.Clear();
             EventLogged = null;
             Enabled = true;
+            EventsEnabled = true;
             RevenueMilestonesUsd = null;
         }
     }

@@ -13,7 +13,7 @@ namespace Sketch.Sdk
     /// Events logged before Firebase is ready are buffered (max 200) and sent once dependencies resolve.
     /// Needs google-services.json / GoogleService-Info.plist in Assets (from the Firebase console).
     /// </summary>
-    public sealed class SketchFirebaseSink : ISketchAnalyticsSink
+    public sealed class SketchFirebaseSink : ISketchAnalyticsSink, ISketchRoutedSink
     {
         const int MAX_BUFFER = 200;
         readonly List<Action> _pending = new List<Action>();
@@ -21,10 +21,13 @@ namespace Sketch.Sdk
         bool _ready;
         bool _failed;
 
+        /// <summary>Firebase gets revenue only (ad_impression, iap_success, reach_rev_*): owner OR-806/808.</summary>
+        public SketchAnalyticsRoute Route => SketchAnalyticsRoute.Firebase;
+
         public SketchFirebaseSink(bool logAdImpression)
         {
             _logAdImpression = logAdImpression;
-            FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task =>
+            SketchFirebaseDependencies.Once(FirebaseApp.CheckAndFixDependenciesAsync).ContinueWith(task =>
             {
                 DependencyStatus status = task.IsFaulted || task.IsCanceled ? DependencyStatus.UnavailableOther : task.Result;
                 SketchSdkLoop.Post(() => OnDependencies(status));
@@ -67,29 +70,20 @@ namespace Sketch.Sdk
         public void LogAdRevenue(SketchAdRevenue revenue)
         {
             if (!_logAdImpression || revenue == null) return;
-            double value = revenue.ValueMicros / 1_000_000d;
-            string currency = string.IsNullOrEmpty(revenue.Currency) ? "USD" : revenue.Currency;
-            var parameters = new[]
-            {
-                new Parameter(FirebaseAnalytics.ParameterAdPlatform, "AdMob"),
-                new Parameter(FirebaseAnalytics.ParameterAdSource, Trim(revenue.AdSource ?? "AdMob", 100)),
-                new Parameter(FirebaseAnalytics.ParameterAdFormat, Trim(revenue.Format ?? string.Empty, 100)),
-                new Parameter(FirebaseAnalytics.ParameterAdUnitName, Trim(revenue.AdUnitId ?? string.Empty, 100)),
-                new Parameter(FirebaseAnalytics.ParameterCurrency, currency),
-                new Parameter(FirebaseAnalytics.ParameterValue, value),
-            };
+            var pairs = new List<KeyValuePair<string, object>>(8);
+            SketchAnalyticsSchema.AdImpressionParams(revenue, pairs);
+            var parameters = new Parameter[pairs.Count];
+            for (int i = 0; i < pairs.Count; i++)
+                parameters[i] = pairs[i].Value is double d ? new Parameter(pairs[i].Key, d) : new Parameter(pairs[i].Key, (string)pairs[i].Value);
             Run(() => FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventAdImpression, parameters));
         }
 
         public void LogPurchase(SketchPurchase purchase)
         {
-            // Firebase collects in_app_purchase automatically from the store; log the funnel event only.
-            LogEvent("iap_success", new Dictionary<string, object>
-            {
-                ["product_id"] = purchase.ProductId ?? string.Empty,
-                ["value"] = purchase.Price,
-                ["currency"] = purchase.Currency ?? string.Empty,
-            });
+            // Bounce logs iap_success to Firebase after validation (BounceSdk.cs LogIAPEvent); the store revenue itself is the
+            // automatic in_app_purchase event, so iap_success carries value/currency without being a GA4 revenue event.
+            if (purchase == null) return;
+            LogEvent("iap_success", SketchAnalyticsSchema.PurchaseParams(purchase));
         }
 
         static Parameter[] Convert(IReadOnlyDictionary<string, object> parameters)

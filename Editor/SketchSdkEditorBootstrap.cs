@@ -34,6 +34,7 @@ namespace Sketch.Sdk.Editor
                     SketchSdkSettingsWindow.Open();
                 }
                 if (settings != null && SketchSdkEditorUtil.IsGoogleMobileAdsInstalled) SketchSdkEditorUtil.SyncAppIds(settings);
+                if (!SketchDevScaffold.Exists) SketchDevScaffold.EnsureCreated();
             };
         }
     }

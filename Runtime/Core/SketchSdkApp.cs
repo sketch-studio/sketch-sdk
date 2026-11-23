@@ -61,8 +61,9 @@ namespace Sketch.Sdk
                 _basePacing = settings.Pacing ?? new SketchAdsPolicySettings();
                 SketchAds.Configure(SketchAdsRemoteKeys.Apply(_basePacing, SketchRemoteConfig.Store));
                 SketchRemoteConfig.Updated += ApplyRemotePacing;
+                ApplyRemoteLogEnable();
             });
-            Step("session event", () => SketchAnalytics.Log("sketch_session_start", "session", SketchIdentity.Session, "sdk_version", SketchSdkVersion.VERSION));
+            Step("session event", () => SketchAnalytics.Log("sketch_session_start", "session", SketchIdentity.Session, "app_version", SketchAppVersion.Code, "version_name", Application.version, "sdk_version", SketchSdkVersion.VERSION));
 
             ISketchConsentProvider consent = null;
             Step("consent provider", () => consent = CreateConsent(settings));
@@ -166,10 +167,14 @@ namespace Sketch.Sdk
         static SketchServerClient StartAnalytics(SketchSdkSettings settings)
         {
             SketchAnalytics.RevenueMilestonesUsd = settings.RevenueMilestonesUsd;
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (settings.VerboseLogs) SketchAnalytics.AddSink(new SketchDebugLogSink());
-#endif
             SketchServerClient server = null;
+#if UNITY_EDITOR
+            // OR-818 (owner): the Editor never sends analytics, revenue or IAP to the server or Firebase (no live-data noise).
+            // Every event is printed locally instead so the call sites can still be checked; test real logging on a device build.
+            SketchAnalytics.AddSink(new SketchDebugLogSink());
+            SketchLog.Info("Sketch analytics: Editor mode, events are logged to the Console only (no server / Firebase).");
+#else
+            if (settings.VerboseLogs) SketchAnalytics.AddSink(new SketchDebugLogSink());
             if (settings.HasServerCredentials)
             {
                 server = new SketchServerClient(settings.ServerUrl, settings.ServerAppId, settings.ServerApiKey, settings.ServerFlushIntervalSeconds);
@@ -189,6 +194,7 @@ namespace Sketch.Sdk
                 }
                 catch (Exception e) { SketchLog.Warn("Analytics module failed: " + e.Message); }
             }
+#endif
             return server;
         }
 
@@ -209,8 +215,13 @@ namespace Sketch.Sdk
             });
         }
 
+        // Bounce RemoteConfig.logEnable (RemoteConfig.cs:39, checked in BounceSdk.LogAds / LogEvent): remote kill switch for events.
+        static void ApplyRemoteLogEnable() =>
+            SketchAnalytics.EventsEnabled = SketchRemoteConfig.GetBool(SketchAnalyticsSchema.REMOTE_LOG_ENABLE, true);
+
         static void ApplyRemotePacing()
         {
+            ApplyRemoteLogEnable();
             if (_basePacing == null) return;
             SketchAdsPolicy policy = SketchAds.Policy;
             policy.Settings = SketchAdsRemoteKeys.Apply(_basePacing, SketchRemoteConfig.Store);

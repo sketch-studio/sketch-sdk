@@ -4,13 +4,15 @@ using System.Globalization;
 
 namespace Sketch.Sdk
 {
-    /// <summary>Layered key/value store: remote values override local defaults. Pure C#, no Unity.</summary>
+    /// <summary>Layered key/value store: overrides > server > provider > local defaults. Pure C#, no Unity.</summary>
     public sealed class SketchConfigValues
     {
         readonly Dictionary<string, object> _defaults = new Dictionary<string, object>(StringComparer.Ordinal);
         readonly Dictionary<string, object> _remote = new Dictionary<string, object>(StringComparer.Ordinal);
         // Provider layer (Firebase Remote Config): below the Sketch server answer, above the settings defaults.
         readonly Dictionary<string, object> _provider = new Dictionary<string, object>(StringComparer.Ordinal);
+        // Override layer (Editor testing from Sketch SDK > Manager > Remote Config): above everything.
+        readonly Dictionary<string, object> _overrides = new Dictionary<string, object>(StringComparer.Ordinal);
 
         public string ConfigId { get; private set; } = string.Empty;
         public bool HasRemote { get; private set; }
@@ -21,6 +23,7 @@ namespace Sketch.Sdk
                 foreach (var key in _defaults.Keys) yield return key;
                 foreach (var key in _provider.Keys) if (!_defaults.ContainsKey(key)) yield return key;
                 foreach (var key in _remote.Keys) if (!_defaults.ContainsKey(key) && !_provider.ContainsKey(key)) yield return key;
+                foreach (var key in _overrides.Keys) if (!_defaults.ContainsKey(key) && !_provider.ContainsKey(key) && !_remote.ContainsKey(key)) yield return key;
             }
         }
 
@@ -46,6 +49,13 @@ namespace Sketch.Sdk
             if (values != null) foreach (var pair in values) _provider[pair.Key] = pair.Value;
         }
 
+        /// <summary>Replace the override layer (wins over server, provider and defaults). Null clears it.</summary>
+        public void SetOverrides(IDictionary<string, object> values)
+        {
+            _overrides.Clear();
+            if (values != null) foreach (var pair in values) _overrides[pair.Key] = pair.Value;
+        }
+
         public void ClearRemote()
         {
             _remote.Clear();
@@ -53,10 +63,11 @@ namespace Sketch.Sdk
             HasRemote = false;
         }
 
-        public bool Has(string key) => key != null && (_remote.ContainsKey(key) || _provider.ContainsKey(key) || _defaults.ContainsKey(key));
+        public bool Has(string key) => key != null && (_overrides.ContainsKey(key) || _remote.ContainsKey(key) || _provider.ContainsKey(key) || _defaults.ContainsKey(key));
 
         public bool TryGetRaw(string key, out object value)
         {
+            if (key != null && _overrides.TryGetValue(key, out value)) return true;
             if (key != null && _remote.TryGetValue(key, out value)) return true;
             if (key != null && _provider.TryGetValue(key, out value)) return true;
             if (key != null && _defaults.TryGetValue(key, out value)) return true;

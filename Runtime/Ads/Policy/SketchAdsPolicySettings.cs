@@ -27,6 +27,8 @@ namespace Sketch.Sdk
         public int InterstitialMinSession = 1;
         /// <summary>Comma-separated app versions (exact, trimmed) that show no banner, interstitial, app open, native or rewarded interstitial. Rewarded keeps working. Empty = off.</summary>
         public string AdsOffVersions = "";
+        /// <summary>Formats a remove-ads purchase blocks. Rewarded is never blocked. Default = SDK 1.4.1 behaviour.</summary>
+        public SketchRemoveAdsScope RemoveAdsBlocks = SketchRemoveAdsScope.Default;
         public List<SketchPlacementRule> Placements = new List<SketchPlacementRule>();
         /// <summary>Banner stays hidden until this many seconds after the first app open.</summary>
         public float BannerStartDelaySeconds;

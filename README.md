@@ -5,7 +5,7 @@
 One Unity package for mobile monetization, modeled on Bounce SDK but **AdMob only** (no AppLovin MAX):
 
 - **Ads (Google AdMob):** banner, interstitial, rewarded, rewarded interstitial, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
-- **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads (rewarded keeps working). All overridable from remote config without a new build.
+- **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads with a configurable scope (`Pacing.RemoveAdsBlocks`, default: interstitial, app open, banner and native off; rewarded always kept). All overridable from remote config without a new build.
 - **Consent:** Google UMP (GDPR / US states) before ads, privacy-options button API. Ads are requested only when UMP allows it; if the form could not be answered (offline, dismissed) ads start after the privacy form or on the next resume, and the game never waits on it.
 - **Sketch Server:** analytics events, sessions, ad revenue (per paid impression), IAP revenue, remote config + A/B `configId`. Offline queue on disk, batched, retried.
 - **Firebase Analytics (optional):** used automatically when Firebase Analytics is installed (UPM or .unitypackage); add google-services.json / GoogleService-Info.plist from the Firebase console.
@@ -30,7 +30,7 @@ Menus: **Sketch SDK > Check For Updates**, **Reinstall Current**, **Install Vers
 
 ### Splash
 
-`Assets/SketchSdk/Splash/SketchSplash.unity` (build index 0): brand, SDK start, loading bar, then the next scene. It waits for consent, remote config, your preloads and ready checks (each with a timeout) and the minimum time, never longer than the hard cap (4 s by default), and shows the cold-start app open through `SketchAds.ShowColdStartAppOpen`. Customize it **only** through `Assets/Resources/SketchSplashHook.asset` (next scene, timings, brand/background sprites, title, bar colour, preloads). Never edit the SDK scene: it is rebuilt on update. Code hooks: implement `ISketchSplashPreload` (`IEnumerator Preload()`) or call `SketchSplashRegistry.Register(...)` / `RegisterReadyCheck(Func<bool>)` from a `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]` method.
+`Assets/SketchSdk/Splash/SketchSplash.unity` (build index 0): brand, SDK start, loading bar, then the next scene. It waits for consent, remote config, your preloads and ready checks (each with a timeout) and the minimum time, never longer than the hard cap (4 s by default), and shows the cold-start app open through `SketchAds.ShowColdStartAppOpen`. Customize it **only** through `Assets/Resources/SketchSplashHook.asset` (next scene, timings, brand sprite + size/position, background sprite (aspect-filled on tall screens), title, bar track/fill sprites (9-slice caps kept at every fill), bar size/position/colour, optional label prefab under the bar, preloads). Never edit the SDK scene: it is rebuilt on update. Code hooks: implement `ISketchSplashPreload` (`IEnumerator Preload()`) or call `SketchSplashRegistry.Register(...)` / `RegisterReadyCheck(Func<bool>)` from a `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]` method.
 
 ## 1. Install (new project, 5 minutes)
 
@@ -39,7 +39,7 @@ Menus: **Sketch SDK > Check For Updates**, **Reinstall Current**, **Install Vers
    https://github.com/CodeSketch-dev/sketch-sdk.git
    ```
    Pin a version for production: `https://github.com/CodeSketch-dev/sketch-sdk.git#v1.0.0`.
-2. The **Sketch SDK** window opens (menu **Sketch SDK > Settings**). If "Google Mobile Ads: missing", press **Install** (adds OpenUPM `com.google.ads.mobile`) or import the `.unitypackage` from [googleads-mobile-unity releases](https://github.com/googleads/googleads-mobile-unity/releases).
+2. The **Sketch SDK** window opens (menu **Sketch SDK > Manager**: tabs Overview with a green/red setup checklist, Ads, IAP, Analytics, Remote Config, Server, Splash, Consent). If the checklist shows "Google Mobile Ads plugin" in red, use **Sketch SDK > Install Google Mobile Ads** (adds OpenUPM `com.google.ads.mobile`) or import the `.unitypackage` from [googleads-mobile-unity releases](https://github.com/googleads/googleads-mobile-unity/releases).
 3. Fill your AdMob ids (AdMob console > Apps):
    - **App Id**: `ca-app-pub-XXXX~YYYY` (Android and iOS separately).
    - **Ad unit ids** `ca-app-pub-XXXX/ZZZZ` for the formats you use. Leave a format blank to turn it off.
@@ -76,7 +76,8 @@ if (SketchAds.IsRewardedInterstitialReady)
 SketchAds.ShowBanner();
 SketchAds.BannerHeightChanged += px => bottomBar.anchoredPosition = new Vector2(0, px / canvas.scaleFactor);
 
-// Remove-ads purchase (persisted). Blocks banner, interstitial, app open, native. Rewarded stays.
+// Remove-ads purchase (persisted). Blocks the formats in SketchSdkSettings Pacing.RemoveAdsBlocks
+// (default banner, interstitial, app open, native). Rewarded stays. Query one format: SketchAds.IsAdsRemovedFor(SketchRemoveAdsScope.Interstitial).
 SketchAds.SetAdsRemoved(true);
 
 // Pause gameplay while a fullscreen ad is on screen (audio is paused for you).
@@ -189,6 +190,24 @@ Defaults (Bounce values) are in Settings > Pacing. Override any of them per A/B 
 | `sketch_ads_placements` | JSON array | `[{"placement":"level_end","enabled":true,"min_session":2,"cooldown":45}]` |
 
 `SketchAds.ShowInterstitial(placement, onClosed, skipCooldown: true)` ignores only the cooldown. `SketchAds.Policy.LastBlockReason` tells why an ad was skipped.
+
+
+### Remote Config tab and game keys
+
+Menu **Sketch SDK > Manager > Remote Config** lists every key (SDK keys above, your game keys, free-form Settings defaults) with type, default and description, lets you type an **Editor-only override** per key (never shipped), and exports the defaults as a Firebase Remote Config template, an Android defaults XML or the Sketch server JSON.
+
+Declare game keys in `Assets/SketchDev/SketchRemoteConfig.Dev.cs` (created once by the SDK, yours, never overwritten on update):
+
+```csharp
+public static partial class SketchRemoteConfig
+{
+    static partial void RegisterGameKeys(List<SketchRemoteKeyDef> keys)
+    {
+        keys.Add(SketchRemoteKeyDef.Int("start_lives", 3, "Lives at the start of a run."));
+    }
+    public static int StartLives => GetInt("start_lives", 3);
+}
+```
 
 ## 4. Events sent automatically
 

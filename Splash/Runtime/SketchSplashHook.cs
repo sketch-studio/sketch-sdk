@@ -41,6 +41,30 @@ namespace Sketch.Sdk.Splash
         [SerializeField] string _title = "";
         [SerializeField] Color _titleColor = Color.white;
         [SerializeField] Color _barColor = new Color(0.36f, 0.82f, 0.33f, 1f);
+        [Tooltip("Aspect-fill the background sprite (no stretch on tall phones). Off = stretch to the screen.")]
+        [SerializeField] bool _backgroundEnvelope = true;
+
+        [Header("Look: brand")]
+        [Tooltip("Brand box in canvas units (reference 1080x1920); the sprite keeps its aspect inside it.")]
+        [SerializeField] Vector2 _brandSize = new Vector2(600f, 600f);
+        [Range(0f, 1f)] [SerializeField] float _brandAnchorY = 0.56f;
+
+        [Header("Look: loading bar")]
+        [Tooltip("Track sprite. Null = built-in rounded UISprite. A sprite with a border is drawn Sliced.")]
+        [SerializeField] Sprite _barBackgroundSprite;
+        [SerializeField] Color _barBackgroundColor = new Color(0f, 0f, 0f, 0.45f);
+        [Tooltip("Fill sprite. Null = built-in rounded UISprite. Its 9-slice caps are kept at every fill value.")]
+        [SerializeField] Sprite _barFillSprite;
+        [SerializeField] Vector2 _barSize = new Vector2(720f, 40f);
+        [Range(0f, 1f)] [SerializeField] float _barAnchorY = 0.14f;
+        [Tooltip("Fill inset inside the track. 0 when the fill art has its own outline and overlays the track.")]
+        [SerializeField] float _barFillInset = 4f;
+        [Tooltip("Optional label prefab (e.g. a 'Loading...' text in the game's own font), centred in a slot under the bar.")]
+        [SerializeField] GameObject _barLabelPrefab;
+        [Tooltip("Gap between the bar bottom and the label slot, canvas units.")]
+        [SerializeField] float _barLabelGap = 12f;
+        [Tooltip("Label slot height (slot width = bar width), canvas units.")]
+        [SerializeField] float _barLabelHeight = 80f;
 
         [Header("Preloads")]
         [Tooltip("ScriptableObjects or prefabs whose component implements ISketchSplashPreload.")]
@@ -61,6 +85,18 @@ namespace Sketch.Sdk.Splash
         public string Title => _title;
         public Color TitleColor => _titleColor;
         public Color BarColor => _barColor;
+        public bool BackgroundEnvelope => _backgroundEnvelope;
+        public Vector2 BrandSize => _brandSize;
+        public float BrandAnchorY => _brandAnchorY;
+        public Sprite BarBackgroundSprite => _barBackgroundSprite;
+        public Color BarBackgroundColor => _barBackgroundColor;
+        public Sprite BarFillSprite => _barFillSprite;
+        public Vector2 BarSize => _barSize;
+        public float BarAnchorY => _barAnchorY;
+        public float BarFillInset => Mathf.Max(0f, _barFillInset);
+        public GameObject BarLabelPrefab => _barLabelPrefab;
+        public float BarLabelGap => Mathf.Max(0f, _barLabelGap);
+        public float BarLabelHeight => Mathf.Max(0f, _barLabelHeight);
 
         /// <summary>Appends every configured ISketchSplashPreload (SO directly, or a component on a listed prefab).</summary>
         public void CollectPreloads(List<ISketchSplashPreload> into)

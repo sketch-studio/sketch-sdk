@@ -3,6 +3,8 @@
   "rootNamespace": "Sketch.Sdk.Tests",
   "references": [
     "SketchSdk.Runtime",
+    "UnityEngine.UI",
+    "SketchSdk.Splash",
     "SketchSdk.Editor",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"

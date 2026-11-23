@@ -392,12 +392,12 @@ namespace Sketch.Sdk
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
             {
-                bool wasShown = _nativeShown;
-                SketchNativeCallbacks callbacks = _nativeCallbacks;
+                bool androidWasShown = _nativeShown;
+                SketchNativeCallbacks androidCallbacks = _nativeCallbacks;
                 _nativeCallbacks = null;
                 _nativeShown = false;
                 SketchAndroidNative.Hide();
-                if (wasShown) callbacks?.Closed(SketchNativeCloseReason.SdkClosed);
+                if (androidWasShown) androidCallbacks?.Closed(SketchNativeCloseReason.SdkClosed);
                 return;
             }
 #endif

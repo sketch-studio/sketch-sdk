@@ -108,6 +108,9 @@ namespace Sketch.Sdk
         [Tooltip("iOS App Store numeric id, used by SketchRating.OpenStorePage on iOS.")]
         public string IosAppStoreId = "";
 
+        [Tooltip("Bundle version code of the build (Android bundleVersionCode / iOS build number), written automatically before every build. Sent to the server as appVersion so the dashboard filters by 1, 2, 3...")]
+        public int BuildVersionCode;
+
         public SketchAdUnitIds CurrentPlatformIds
         {
             get

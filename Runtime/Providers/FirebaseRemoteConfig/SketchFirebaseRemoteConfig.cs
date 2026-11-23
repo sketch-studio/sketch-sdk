@@ -19,7 +19,7 @@ namespace Sketch.Sdk
         static void Start()
         {
             if (Application.isEditor && !Application.isPlaying) return;
-            FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(dependencies =>
+            SketchFirebaseDependencies.Once(FirebaseApp.CheckAndFixDependenciesAsync).ContinueWithOnMainThread(dependencies =>
             {
                 if (dependencies.IsFaulted || dependencies.IsCanceled || dependencies.Result != DependencyStatus.Available)
                 {

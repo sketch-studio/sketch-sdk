@@ -31,6 +31,7 @@ namespace Sketch.Sdk
                 InterstitialCooldownSeconds = values.GetFloat(INTER_COOLDOWN, source.InterstitialCooldownSeconds),
                 InterstitialMinSession = values.GetInt(INTER_MIN_SESSION, source.InterstitialMinSession),
                 AdsOffVersions = values.GetString(ADS_OFF_VERSION, source.AdsOffVersions ?? string.Empty),
+                RemoveAdsBlocks = source.RemoveAdsBlocks,
                 BannerStartDelaySeconds = values.GetFloat(BANNER_START_DELAY, source.BannerStartDelaySeconds),
                 AppOpenOnResume = values.GetBool(APP_OPEN_RESUME, source.AppOpenOnResume),
                 AppOpenOnColdStart = values.GetBool(APP_OPEN_COLD_START, source.AppOpenOnColdStart),

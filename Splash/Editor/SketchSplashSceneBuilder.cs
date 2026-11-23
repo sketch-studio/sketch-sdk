@@ -37,6 +37,8 @@ namespace Sketch.Sdk.Splash.Editor
 
             try
             {
+                // A Single-mode NewScene unloads unused assets, so a hook loaded before it can be a destroyed object.
+                if (hook == null) hook = FindOrCreateHook();
                 Populate(scene, hook);
                 Directory.CreateDirectory(Path.GetDirectoryName(SCENE_PATH));
                 if (!EditorSceneManager.SaveScene(scene, SCENE_PATH)) throw new IOException("could not save " + SCENE_PATH);
@@ -102,9 +104,14 @@ namespace Sketch.Sdk.Splash.Editor
             Image background = CreateImage("Background", canvasGo.transform, null);
             Stretch(background.rectTransform);
             background.color = hook.BackgroundColor;
+            // Aspect-fill for a background sprite; the controller turns it off (stretch) for a plain colour.
+            AspectRatioFitter backgroundFitter = background.gameObject.AddComponent<AspectRatioFitter>();
+            backgroundFitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            backgroundFitter.aspectRatio = ReferenceResolution.x / ReferenceResolution.y;
+            backgroundFitter.enabled = false;
 
             Image brand = CreateImage("Brand", canvasGo.transform, hook.BrandSprite);
-            Place(brand.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(600f, 600f));
+            Place(brand.rectTransform, new Vector2(0.5f, hook.BrandAnchorY), hook.BrandSize);
             brand.preserveAspect = true;
 
             Text title = CreateText("Title", canvasGo.transform);
@@ -112,25 +119,45 @@ namespace Sketch.Sdk.Splash.Editor
 
             var barRoot = new GameObject("LoadingBar", typeof(RectTransform));
             barRoot.transform.SetParent(canvasGo.transform, false);
-            Place((RectTransform)barRoot.transform, new Vector2(0.5f, 0.14f), new Vector2(720f, 40f));
+            Place((RectTransform)barRoot.transform, new Vector2(0.5f, hook.BarAnchorY), hook.BarSize);
             CanvasGroup barGroup = barRoot.AddComponent<CanvasGroup>();
             barGroup.blocksRaycasts = false;
             barGroup.interactable = false;
 
             Sprite rounded = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-            Image track = CreateImage("Track", barRoot.transform, rounded);
+            Sprite trackSprite = hook.BarBackgroundSprite != null ? hook.BarBackgroundSprite : rounded;
+            Image track = CreateImage("Track", barRoot.transform, trackSprite);
             Stretch(track.rectTransform);
-            track.type = rounded != null ? Image.Type.Sliced : Image.Type.Simple;
-            track.color = new Color(0f, 0f, 0f, 0.45f);
+            track.type = trackSprite != null && trackSprite.border != Vector4.zero ? Image.Type.Sliced : Image.Type.Simple;
+            track.color = hook.BarBackgroundColor;
 
-            Image fill = CreateImage("Fill", barRoot.transform, rounded);
+            // Filled + 9-slice image: full-width rect trimmed by fillAmount, rounded caps kept at low values.
+            Sprite fillSprite = hook.BarFillSprite != null ? hook.BarFillSprite : rounded;
+            var fillGo = new GameObject("Fill", typeof(RectTransform));
+            fillGo.transform.SetParent(barRoot.transform, false);
+            SketchSlicedFillImage fill = fillGo.AddComponent<SketchSlicedFillImage>();
+            fill.sprite = fillSprite;
+            fill.raycastTarget = false;
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fill.fillAmount = 0f;
             RectTransform fillRect = fill.rectTransform;
+            float inset = hook.BarFillInset;
             fillRect.anchorMin = Vector2.zero;
-            fillRect.anchorMax = new Vector2(0f, 1f);
-            fillRect.offsetMin = new Vector2(4f, 4f);
-            fillRect.offsetMax = new Vector2(-4f, -4f);
-            fill.type = rounded != null ? Image.Type.Sliced : Image.Type.Simple;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = new Vector2(inset, inset);
+            fillRect.offsetMax = new Vector2(-inset, -inset);
             fill.color = hook.BarColor;
+
+            var labelSlot = new GameObject("LabelSlot", typeof(RectTransform));
+            labelSlot.transform.SetParent(barRoot.transform, false);
+            var slotRect = (RectTransform)labelSlot.transform;
+            slotRect.anchorMin = Vector2.zero;
+            slotRect.anchorMax = new Vector2(1f, 0f);
+            slotRect.pivot = new Vector2(0.5f, 1f);
+            slotRect.anchoredPosition = new Vector2(0f, -hook.BarLabelGap);
+            slotRect.sizeDelta = new Vector2(0f, hook.BarLabelHeight);
 
             CreateEventSystem(scene);
 
@@ -140,10 +167,13 @@ namespace Sketch.Sdk.Splash.Editor
             var so = new SerializedObject(controller);
             so.FindProperty("_hook").objectReferenceValue = hook;
             so.FindProperty("_background").objectReferenceValue = background;
+            so.FindProperty("_backgroundFitter").objectReferenceValue = backgroundFitter;
             so.FindProperty("_brand").objectReferenceValue = brand;
             so.FindProperty("_title").objectReferenceValue = title;
             so.FindProperty("_barGroup").objectReferenceValue = barGroup;
-            // Sliced fill driven by anchorMax keeps the rounded ends; the controller uses fillAmount only for a Filled image.
+            so.FindProperty("_barTrack").objectReferenceValue = track;
+            so.FindProperty("_barLabelSlot").objectReferenceValue = slotRect;
+            // Older scenes with a stock sliced Image fall back to driving anchorMax; this one uses fillAmount.
             so.FindProperty("_barFill").objectReferenceValue = fill;
             so.FindProperty("_barFillRect").objectReferenceValue = fillRect;
             so.ApplyModifiedPropertiesWithoutUndo();

@@ -9,7 +9,7 @@ namespace Sketch.Sdk
         public SketchAdsPolicySettings Settings { get; set; }
         /// <summary>1-based session counter.</summary>
         public int Session { get; set; } = 1;
-        /// <summary>Remove-ads purchased: blocks interstitial, app-open and banner; rewarded stays available.</summary>
+        /// <summary>Remove-ads purchased: blocks the formats listed in Settings.RemoveAdsBlocks; rewarded stays available.</summary>
         public bool AdsRemoved { get; set; }
         /// <summary>Why the last Can* call returned false (empty when allowed).</summary>
         public string LastBlockReason { get; private set; } = string.Empty;
@@ -20,12 +20,31 @@ namespace Sketch.Sdk
             _firstOpen = firstOpenTime;
         }
 
+        /// <summary>True when the remove-ads purchase is owned and Settings.RemoveAdsBlocks lists this format.</summary>
+        public bool IsRemoved(SketchRemoveAdsScope format) => AdsRemoved && (Settings.RemoveAdsBlocks & format) != 0;
+
         public double LastFullscreenTime => _lastFullscreen;
         /// <summary>App version of this build (the facade passes Application.version); compared with Settings.AdsOffVersions.</summary>
         public string AppVersion { get; set; } = string.Empty;
 
         /// <summary>True when AppVersion exactly matches one trimmed entry of the comma-separated Settings.AdsOffVersions.</summary>
-        public bool IsAdsOffForVersion => IsVersionListed(Settings.AdsOffVersions, AppVersion);
+        public bool IsAdsOffForVersion
+        {
+            get
+            {
+                // Cached per (list, version) string instance: readiness checks run every frame and Split allocates.
+                string list = Settings.AdsOffVersions, version = AppVersion;
+                if (!ReferenceEquals(list, _offList) || !ReferenceEquals(version, _offVersion))
+                {
+                    _offList = list;
+                    _offVersion = version;
+                    _offCached = IsVersionListed(list, version);
+                }
+                return _offCached;
+            }
+        }
+        string _offList, _offVersion;
+        bool _offCached;
 
         /// <summary>Pure: exact, trimmed match of version against a comma-separated list. Empty list or version = false.</summary>
         public static bool IsVersionListed(string list, string version)
@@ -41,23 +60,24 @@ namespace Sketch.Sdk
         /// <summary>Rewarded is never blocked by pacing, remove-ads or the ads-off version, so reward buttons never break.</summary>
         public bool CanShowRewarded() => Pass();
 
-        /// <summary>Rewarded interstitial: kept under remove-ads (player gets a reward), blocked for an ads-off app version.</summary>
+        /// <summary>Rewarded interstitial: kept under remove-ads unless RemoveAdsBlocks lists it; blocked for an ads-off app version.</summary>
         public bool CanShowRewardedInterstitial()
         {
+            if (IsRemoved(SketchRemoveAdsScope.RewardedInterstitial)) return Block("ads_removed");
             if (IsAdsOffForVersion) return Block("ads_off_version");
             return Pass();
         }
 
         public bool CanShowNative()
         {
-            if (AdsRemoved) return Block("ads_removed");
+            if (IsRemoved(SketchRemoveAdsScope.Native)) return Block("ads_removed");
             if (IsAdsOffForVersion) return Block("ads_off_version");
             return Pass();
         }
 
         public bool CanShowBanner(double now)
         {
-            if (AdsRemoved) return Block("ads_removed");
+            if (IsRemoved(SketchRemoveAdsScope.Banner)) return Block("ads_removed");
             if (IsAdsOffForVersion) return Block("ads_off_version");
             if (now - _firstOpen < Settings.BannerStartDelaySeconds) return Block("banner_start_delay");
             return Pass();
@@ -65,7 +85,7 @@ namespace Sketch.Sdk
 
         public bool CanShowInterstitial(string placement, double now, bool skipCooldown = false)
         {
-            if (AdsRemoved) return Block("ads_removed");
+            if (IsRemoved(SketchRemoveAdsScope.Interstitial)) return Block("ads_removed");
             if (IsAdsOffForVersion) return Block("ads_off_version");
             SketchPlacementRule rule = Settings.FindPlacement(placement);
             if (rule != null && !rule.Enabled) return Block("placement_disabled");
@@ -79,7 +99,7 @@ namespace Sketch.Sdk
 
         public bool CanShowAppOpen(double now, bool coldStart, double backgroundSeconds)
         {
-            if (AdsRemoved) return Block("ads_removed");
+            if (IsRemoved(SketchRemoveAdsScope.AppOpen)) return Block("ads_removed");
             if (IsAdsOffForVersion) return Block("ads_off_version");
             if (coldStart ? !Settings.AppOpenOnColdStart : !Settings.AppOpenOnResume) return Block("app_open_disabled");
             if (now - _firstOpen < Settings.AppOpenStartDelaySeconds) return Block("start_delay");

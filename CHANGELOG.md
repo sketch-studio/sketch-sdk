@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.4.5
+- Editor never sends analytics, revenue or IAP to the server or Firebase (owner OR-818): `#if UNITY_EDITOR` only the debug sink runs and always prints `[SketchSdk][Editor only, not sent]` per event; device builds log normally. Test real logging with a device build.
+- Server `appVersion` is now the bundle version code (1, 2, 3...) via `SketchAppVersion.Code` (OR-820), baked into `SketchSdkSettings.BuildVersionCode` by `SketchBuildVersionBaker` before every build; `sketch_session_start` carries `app_version` (code), `version_name` and `sdk_version`. Dashboard From/To Version filter uses plain integers.
+
+## 1.4.4
+- **Sketch SDK Manager** window (menu Sketch SDK > Manager, Settings kept as alias), Bounce Manager style: tabs Overview, Ads, IAP, Analytics, Remote Config, Server, Splash, Consent. Every settings field is drawn with a short help line and its remote key; edits go through SerializedObject (Undo, nothing written when only viewed). Header shows version and READY / error / warning badges, tabs with problems are marked.
+- Setup checklist (`SketchSetupChecklist.Build(settings, facts)`, pure, tested; facts from `SketchSetupScanner`): settings location, Google Mobile Ads + UMP, SKETCHSDK_ADMOB, App ID and every ad unit per platform (format, Google test ids), test ads off in release, SketchIapCatalog (+ validation), Unity IAP package, `IAPProductCatalog.json`, BILLING permission, Firebase plugin, `google-services.json`, `FirebaseApp.androidlib`, splash at build index 0, Sketch server credentials, consent. Each row OK / INFO / WARN / ERROR with a one-line fix.
+- Ads tab: Android / iOS id editor with a per-field badge, pacing with remote key hints, remove-ads scope as checkboxes (rewarded never blocked). IAP tab: product table. Server tab: API key masked with Show / Copy, Open dashboard. Splash tab: build scenes, hook inspector, Build Splash Scene.
+- Remote Config tab: every key (SDK + game + free-form defaults) with type, default, description and an Editor-only override column (top layer `SketchConfigValues.SetOverrides`, stored per project in EditorPrefs, `SketchRemoteConfig.ApplyEditorOverrides()` applies it live in Play). Export: Firebase Remote Config template JSON (Publish from a file), Android defaults XML, Sketch server JSON.
+- `SketchRemoteConfig` is `partial`: `SketchRemoteConfig.Keys.cs` lists SDK keys (`SdkKeys(settings)`, `SketchRemoteKeyDef` with type / default / description) and typed accessors (`InterstitialCooldownSeconds`, `AppOpenOnResume`, `NotificationsEnabled`, `ForceUpdateMinVersionCode`, ...). Games declare their keys in `Assets/SketchDev/SketchRemoteConfig.Dev.cs` (`RegisterGameKeys`), created ONCE with `SketchDev.asmref` (compiles into SketchSdk.Runtime) and never overwritten by SDK updates; declared defaults become config defaults.
+- Tests `SketchSetupChecklistTests`, `SketchRemoteKeysTests` (incl. a guard that the Manager draws every settings field).
+
+## 1.4.3
+- Analytics routing (`SketchAnalyticsRoute`, per-event sink mask): `SketchAnalytics.Log` reaches every sink except Firebase; Firebase receives revenue only (`ad_impression` from every AdMob paid event, `iap_start`, `iap_success`, `reach_rev_*`). `SketchAnalytics.LogTo(route, ...)` for explicit routes; sinks declare their route with `ISketchRoutedSink` (server, Firebase, debug), undeclared sinks count as `Other`.
+- `SketchAnalyticsSchema`: Firebase name/param limits validator, GA4 `ad_impression` params (ad_platform, ad_source, ad_format, ad_unit_name, currency, value, placement), `iap_success` params (product_id, value, currency, value_usd, placement).
+- Bounce parity: remote key `log_enable` (default true) stops events but never revenue; ad lifecycle logs rate-limited to 10 per second; `reach_rev_*` counts ad revenue only and carries `success=1`.
+- Server sink: the periodic queue save writes the file on a worker thread (quit / focus-lost saves stay synchronous); session metadata adds `country`, `locale`, `sdk_version`, `first_open`.
+- Tests `SketchAnalyticsParityTests`.
+
+## 1.4.2
+- Remove-ads scope is a policy setting: `SketchAdsPolicySettings.RemoveAdsBlocks` (`SketchRemoveAdsScope` flags Interstitial, AppOpen, Banner, Native, RewardedInterstitial). Default `SketchRemoveAdsScope.Default` keeps the 1.4.1 behaviour (interstitial, app open, banner, native off; rewarded and RI kept). A game that sells "no forced ads" sets e.g. Interstitial | AppOpen | RewardedInterstitial so banner and native stay. `SketchAds.IsAdsRemovedFor(format)` / `SketchAdsPolicy.IsRemoved(format)`; `SetAdsRemoved(true)` hides the banner / native only when the scope blocks them; remote-config `Apply` keeps the scope. Rewarded is never blocked. Tests `SketchRemoveAdsScopeTests`.
+- `IsAdsOffForVersion` is cached per (list, version) string so per-frame readiness checks do not allocate.
+- Editor fake provider: `SimulateRewardedNoFill`, `SimulateInterstitialNoFill` for fallback paths.
+
+## 1.4.1
+- Splash look hook fields (defaults keep the old look): track/fill sprites (`SketchSlicedFillImage` keeps 9-slice caps round at every fill value), track colour, bar size/anchor/fill inset, brand size/anchor, background aspect-fill on tall screens (`AspectRatioFitter` envelope), optional label prefab in a slot under the bar (e.g. "Loading..." in the game's own font). Builder rebuilds the scene from these fields and reloads the hook after a Single-mode new scene (it was saved with an empty hook reference). EditMode tests `SketchSplashLookTests`.
+
 ## 1.4.0
 - Native in-rect on Android uses an own Java layout (Plugins/Android/SketchAdmobNative.java): full / half / in-rect modes, round countdown-ring close button (26 dp, 6 dp inside the top corner, 3 s ring, top-left on every 4th show), the ad stays until the player closes it.
 - Editor fake native view draws the same layout and close ring; menu toggle under the Sketch SDK fake menu.

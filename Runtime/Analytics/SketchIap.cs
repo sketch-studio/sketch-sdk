@@ -10,7 +10,8 @@ namespace Sketch.Sdk
         public static void ReportPurchaseStart(string productId, string placement = null)
         {
             SketchAds.SuppressNextAppOpen();
-            SketchAnalytics.Log("iap_start", "product_id", productId ?? string.Empty, "placement", placement ?? string.Empty);
+            // Bounce logs iap_start to the server AND Firebase (BounceSdk.cs LogIAPEvent START -> FirebaseManager.Log("iap_start")).
+            SketchAnalytics.LogTo(SketchAnalyticsRoute.All, "iap_start", "product_id", productId ?? string.Empty, "placement", placement ?? string.Empty);
         }
 
         public static void ReportPurchase(SketchPurchase purchase)

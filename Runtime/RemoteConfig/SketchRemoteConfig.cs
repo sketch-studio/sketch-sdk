@@ -9,7 +9,7 @@ namespace Sketch.Sdk
     /// The last server answer is cached, so a returning player gets it before the network answers.
     /// <code>int lives = SketchRemoteConfig.GetInt("start_lives", 3);</code>
     /// </summary>
-    public static class SketchRemoteConfig
+    public static partial class SketchRemoteConfig
     {
         const string CACHE_KEY = "sketchsdk.rc_cache";
         static readonly SketchConfigValues Values = new SketchConfigValues();
@@ -44,6 +44,8 @@ namespace Sketch.Sdk
 
         internal static void ApplyDefaults(SketchSdkSettings settings)
         {
+            ApplyGameKeyDefaults();
+            ApplyEditorOverrides();
             if (settings?.RemoteDefaults == null) return;
             foreach (SketchRemoteDefault entry in settings.RemoteDefaults)
             {
@@ -112,6 +114,7 @@ namespace Sketch.Sdk
         static void ResetStatics()
         {
             Values.ClearRemote();
+            Values.SetOverrides(null);
             IsFetched = false;
             IsReady = false;
             Updated = null;
