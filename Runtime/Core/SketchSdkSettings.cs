@@ -75,6 +75,8 @@ namespace Sketch.Sdk
         public bool RequestConsent = true;
         [Tooltip("Pretend the device is in this region (development builds only) to test the consent form.")]
         public SketchConsentDebugGeography ConsentDebugGeography = SketchConsentDebugGeography.Disabled;
+        [Tooltip("The game's privacy policy page. Must be the exact URL set in Play Console > App content and in AdMob app settings.")]
+        public string PrivacyPolicyUrl;
 
         [Header("Sketch Server (analytics, remote config, revenue)")]
         public bool ServerEnabled;

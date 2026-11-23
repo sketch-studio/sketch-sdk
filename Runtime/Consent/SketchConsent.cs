@@ -22,6 +22,21 @@ namespace Sketch.Sdk
         /// <summary>Show a "Privacy settings" button in Settings when true (required by Google for EEA/UK users).</summary>
         public static bool IsPrivacyOptionsRequired => _provider != null && _provider.IsPrivacyOptionsRequired;
 
+        /// <summary>The game's privacy policy URL from SketchSdkSettings (empty when not configured).</summary>
+        public static string PrivacyPolicyUrl => SketchSdkApp.Settings != null ? SketchSdkApp.Settings.PrivacyPolicyUrl ?? string.Empty : string.Empty;
+
+        /// <summary>True when the game should show a Privacy entry in Settings (consent options or policy page).</summary>
+        public static bool HasPrivacyEntry => IsPrivacyOptionsRequired || !string.IsNullOrEmpty(PrivacyPolicyUrl);
+
+        /// <summary>Privacy button: Google's privacy options form where regulation requires it, else the policy page.</summary>
+        public static void OpenPrivacy(Action onClosed = null)
+        {
+            if (IsPrivacyOptionsRequired) { ShowPrivacyOptions(onClosed); return; }
+            string url = PrivacyPolicyUrl;
+            if (!string.IsNullOrEmpty(url)) Application.OpenURL(url);
+            onClosed?.Invoke();
+        }
+
         public static void ShowPrivacyOptions(Action onClosed = null)
         {
             if (_provider == null) { onClosed?.Invoke(); return; }
