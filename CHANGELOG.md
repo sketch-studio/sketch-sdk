@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.5
+- Allow games to preserve the interstitial cooldown when a rewarded ad closes. App-open spacing still accounts for fullscreen ads.
+
 ## 1.5.4
 - Expose Unity IAP entitlement checks for game-owned refund handling.
 - Keep mediation adapter removal confirmation in the Manager UI.
