@@ -47,6 +47,8 @@ namespace Sketch.Sdk
         public bool NonPersonalized { get; set; } = true;
         /// <summary>Opt out of data sale on mediation networks that need an explicit call (US-state privacy, minors).</summary>
         public bool RestrictDataSale { get; set; }
+        /// <summary>Tags came from the player's age bracket (Require Age Signal); mixed-audience network signals apply.</summary>
+        public bool AgeSignalActive { get; set; }
         public string NonPersonalizedExtraKey { get; set; } = "npa";
         public string NonPersonalizedExtraValue { get; set; } = "1";
         public float NativeAttachTimeoutSeconds { get; set; }

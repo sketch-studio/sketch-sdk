@@ -24,6 +24,16 @@ For a backend that still targets FCM registration tokens, subscribe to `TokenRec
 - **Ads (Google AdMob):** banner, interstitial, rewarded, rewarded interstitial, app open, native-in-rect. Auto reload with back-off, main-thread callbacks, late-reward grace, test ad units in development builds.
 - **Pacing (Bounce rules):** interstitial start delay since install, cooldown after any fullscreen ad, session gate, per-placement rules, app open on resume (never right after another ad), remove-ads with a configurable scope (`Pacing.RemoveAdsBlocks`, default: interstitial, app open, banner and native off; rewarded always kept). All overridable from remote config without a new build.
 - **Age signals (mixed audience, 1.5.8):** turn on *Require Age Signal* when the Play target audience includes players under 18. Consent and ads then wait for the age bracket: the SDK shows a neutral birth-year keypad (no default year, no age hint, answer is final) or the game calls `SketchAudience.SetBracket(...)` (turn off *Show Default Age Gate*; `SketchAudience.UseStore` keeps it in the game save). Unknown age = minor. Under 13: TFCD + TFUA, G, npa. 13-15: TFUA, minor cap (*Minor Max Content Rating*, default T), npa. 16-17: minor cap, npa. 18+: *Max Content Rating*, personalization left to UMP. Minors also get Firebase Consent Mode `ad_user_data`/`ad_personalization` denied and Liftoff `SetCCPAStatus(false)`; TFCD/TFUA reach Liftoff through the AdMob adapter (7.7.4.2+). Keep *Max Content Rating* within the app's own content rating.
+- **Mediation privacy (1.5.9):** what each AdMob adapter forwards by itself vs what the SDK calls (before `MobileAds.Initialize`, by reflection, skipped when the adapter is absent):
+
+  | Network (min adapter) | GDPR (UMP TCF) | TFUA | COPPA / age | US do-not-sell | Mixed audience |
+  |---|---|---|---|---|---|
+  | Liftoff (Android 7.7.4.2) | auto | auto | auto | SDK: `SetCCPAStatus(false)` for minors | - |
+  | Unity Ads (Android 4.16.6.0) | auto (4.19.0.1) | auto | auto | SDK: `privacy.consent=false` for minors | SDK: `user.nonbehavioral` per player; enable Mixed Audience in the Unity dashboard |
+  | InMobi (Android 11.3.0.1) | auto | auto (isAgeRestricted) | auto | reads IAB US Privacy string | declare Mixed Audience in the InMobi dashboard |
+  | BIGO (Android 5.9.0.1) | auto | auto | auto | SDK: `SetCcpaConsent(false)` for minors | - |
+
+  Adult US opt-out from the UMP US-states message is not forwarded to these networks yet (needs GPP parsing). Add every network to AdMob's EU and US-state ad partner lists. New network: add a rule to `SketchMediationPrivacy.Plan` and its assemblies to `Runtime/Providers/AdMob/link.xml`.
 - **Consent:** Google UMP (GDPR / US states) before ads, privacy-options button API. Ads are requested only when UMP allows it; if the form could not be answered (offline, dismissed) ads start after the privacy form or on the next resume, and the game never waits on it.
 - **Sketch Server:** analytics events, sessions, ad revenue (per paid impression), IAP revenue, remote config + A/B `configId`. Offline queue on disk, batched, retried.
 - **Firebase Analytics (optional):** used automatically when Firebase Analytics is installed (UPM or .unitypackage); add google-services.json / GoogleService-Info.plist from the Firebase console.

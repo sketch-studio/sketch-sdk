@@ -39,6 +39,7 @@ namespace Sketch.Sdk.Tests
             Assert.AreEqual(SketchAdMobTag.True, config.UnderAgeOfConsent);
             Assert.IsTrue(config.NonPersonalized);
             Assert.IsTrue(config.RestrictDataSale);
+            Assert.IsTrue(config.AgeSignalActive);
         }
 
         [Test]

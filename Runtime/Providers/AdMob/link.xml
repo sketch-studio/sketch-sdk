@@ -5,4 +5,13 @@
   <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.Android" preserve="all" ignoreIfMissing="1" />
   <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.iOS" preserve="all" ignoreIfMissing="1" />
   <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.Mediation" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.UnityAds.Api" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.UnityAds.Common" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.UnityAds.Android" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.UnityAds.iOS" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.Bigo.Api" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.Bigo.Common" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.Bigo.Android" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.Bigo.iOS" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.Bigo.Mediation" preserve="all" ignoreIfMissing="1" />
 </linker>

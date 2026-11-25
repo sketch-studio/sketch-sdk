@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.9
+- Mediation privacy as data (SketchMediationPrivacy): calls AdMob adapters do not forward, made before MobileAds.Initialize. Minors / unknown age: Liftoff SetCCPAStatus(false), Unity Ads privacy.consent=false, BIGO SetCcpaConsent(false). Unity Ads Mixed Audience: user.nonbehavioral per player (true for minors, false for adults). InMobi needs no call (adapter forwards TFCD/TFUA/COPPA, reads the IAB US Privacy string).
+- A failing call on an installed adapter logs an error and sends mediation_privacy_failed; missing adapters are skipped. link.xml keeps the Unity Ads and BIGO adapter APIs.
+- Setup checklist: "Age signals" row, and "Mediation privacy" is an Error when an installed adapter lost a privacy API.
+
 ## 1.5.8
 - Age signals for mixed-audience games (Settings > Require Age Signal): consent and ads wait until the age bracket is known; an unknown age is treated as a minor, never as an adult.
 - Neutral birth-year age screen (SketchAgeGate) and SketchAudience API (SetBracket, UseStore for the game save, Changed).

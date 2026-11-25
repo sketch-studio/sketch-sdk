@@ -176,5 +176,21 @@ namespace Sketch.Sdk.Tests
             foreach (FieldInfo f in typeof(SketchAdsPolicySettings).GetFields(BindingFlags.Public | BindingFlags.Instance))
                 Assert.IsTrue(drawn.Contains("Pacing." + f.Name), "Settings window does not draw Pacing." + f.Name);
         }
+
+        [Test]
+        public void MediationPrivacyApiMissing_IsAnError()
+        {
+            SketchSetupFacts facts = GoodFacts();
+            facts.MediationPrivacyMissing.Add("BIGO.SetCcpaConsent");
+            Assert.AreEqual(SketchCheckStatus.Error, Find(SketchSetupChecklist.Build(_settings, facts), "Mediation privacy").Status);
+        }
+
+        [Test]
+        public void AgeSignals_OffIsInfo_OnIsOk()
+        {
+            Assert.AreEqual(SketchCheckStatus.Info, Find(SketchSetupChecklist.Build(_settings, GoodFacts()), "Age signals").Status);
+            _settings.RequireAgeSignal = true;
+            Assert.AreEqual(SketchCheckStatus.Ok, Find(SketchSetupChecklist.Build(_settings, GoodFacts()), "Age signals").Status);
+        }
     }
 }

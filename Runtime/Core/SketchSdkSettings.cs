@@ -225,6 +225,7 @@ namespace Sketch.Sdk
             config.MaxContentRating = signals.MaxContentRating;
             config.NonPersonalized = signals.NonPersonalized;
             config.RestrictDataSale = !signals.AdPersonalizationAllowed;
+            config.AgeSignalActive = true;
         }
 
         /// <summary>Test mode keeps a format off when its real id is blank, so a game only loads the formats it uses.</summary>

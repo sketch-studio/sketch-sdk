@@ -5,36 +5,37 @@ using System.Reflection;
 namespace Sketch.Sdk
 {
     /// <summary>
-    /// Privacy calls that AdMob mediation does not forward on its own. Age tags (TFCD/TFUA) and TCF/UMP consent reach
-    /// Liftoff through the adapter (7.6.3.1+ TFUA, 7.7.4.2+ COPPA, 7.4.1+ TCF); the US-state "do not sell" flag does not,
-    /// so minors get LiftoffMonetize.SetCCPAStatus(false) before MobileAds.Initialize. Adapters are optional packages and
-    /// are reached by reflection (link.xml keeps them through stripping).
+    /// Runs SketchMediationPrivacy.Plan on the installed AdMob mediation adapters before MobileAds.Initialize. Adapters
+    /// are optional packages reached by reflection (link.xml keeps them through stripping); a missing adapter is skipped,
+    /// an installed adapter whose call fails is logged as an error and reported to analytics.
     /// </summary>
     static class SketchAdMobMediationPrivacy
     {
-        const string LIFTOFF_TYPE = "GoogleMobileAds.Mediation.LiftoffMonetize.Api.LiftoffMonetize, GoogleMobileAds.Mediation.LiftoffMonetize.Api";
-
         public static void ApplyBeforeInitialize(SketchAdMobConfig config)
         {
-            if (config == null || !config.RestrictDataSale) return;
-            Invoke(LIFTOFF_TYPE, "SetCCPAStatus", false);
+            if (config == null) return;
+            foreach (SketchMediationPrivacyCall call in SketchMediationPrivacy.Plan(config.AgeSignalActive, config.RestrictDataSale, config.NonPersonalized))
+                Invoke(call);
         }
 
-        static void Invoke(string typeName, string method, bool value)
+        static void Invoke(SketchMediationPrivacyCall call)
         {
-            Type type = Type.GetType(typeName, false);
+            Type type = Type.GetType(call.TypeName, false);
             if (type == null) return;
+            var types = new Type[call.Args.Length];
+            for (int i = 0; i < types.Length; i++) types[i] = call.Args[i].GetType();
             try
             {
-                MethodInfo info = type.GetMethod(method, BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(bool) }, null);
-                if (info == null) { SketchLog.Warn($"{type.Name}.{method}(bool) not found; mediation privacy flag not set."); return; }
-                info.Invoke(null, new object[] { value });
-                SketchLog.Info($"Mediation privacy: {type.Name}.{method}({value})");
+                MethodInfo info = type.GetMethod(call.Method, BindingFlags.Public | BindingFlags.Static, null, types, null);
+                if (info == null) throw new MissingMethodException(type.FullName, call.Method);
+                info.Invoke(null, call.Args);
+                SketchLog.Info("Mediation privacy: " + call);
             }
             catch (Exception e)
             {
                 Exception inner = e is TargetInvocationException tie && tie.InnerException != null ? tie.InnerException : e;
-                SketchLog.Warn($"{type.Name}.{method} failed: {inner.Message}");
+                UnityEngine.Debug.LogError($"[SketchAds] Mediation privacy call failed: {call} -> {inner.GetType().Name}: {inner.Message}");
+                SketchAnalytics.Log("mediation_privacy_failed", "network", call.Network, "method", call.Method);
             }
         }
     }

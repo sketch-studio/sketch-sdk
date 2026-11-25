@@ -49,4 +49,23 @@ Check(SketchAgePolicy.Resolve(SketchAgeBracket.Age16To17, PG, T).MaxContentRatin
 Check(SketchAgePolicy.Parse(SketchAgePolicy.Format(SketchAgeBracket.Age13To15)) == SketchAgeBracket.Age13To15, "round trip");
 Check(SketchAgePolicy.Parse("garbage") == SketchAgeBracket.Unknown && SketchAgePolicy.Parse(null) == SketchAgeBracket.Unknown, "bad store value -> unknown");
 
+// Mediation networks: calls that AdMob adapters do not forward on their own.
+bool Has(IReadOnlyList<SketchMediationPrivacyCall> calls, string network, string method, params object[] args) =>
+    calls.Any(c => c.Network == network && c.Method == method && c.Args.SequenceEqual(args));
+
+var off = SketchMediationPrivacy.Plan(ageSignalActive: false, restrictSale: false, nonBehavioral: false);
+Check(off.Count == 0, "no age signal and no sale restriction: no network calls (old behaviour)");
+
+var minor = SketchMediationPrivacy.Plan(ageSignalActive: true, restrictSale: true, nonBehavioral: true);
+Check(Has(minor, "Liftoff", "SetCCPAStatus", false), "minor: Liftoff do-not-sell");
+Check(Has(minor, "BIGO", "SetCcpaConsent", false), "minor: BIGO do-not-sell");
+Check(Has(minor, "UnityAds", "SetConsentMetaData", "privacy.consent", false), "minor: Unity Ads do-not-sell");
+Check(Has(minor, "UnityAds", "SetConsentMetaData", "user.nonbehavioral", true), "minor: Unity Ads mixed-audience contextual only");
+Check(!minor.Any(c => c.Network == "InMobi"), "InMobi gets TFCD/TFUA from the adapter; no extra call");
+
+var grown = SketchMediationPrivacy.Plan(ageSignalActive: true, restrictSale: false, nonBehavioral: false);
+Check(Has(grown, "UnityAds", "SetConsentMetaData", "user.nonbehavioral", false), "adult: Unity Ads behavioural allowed (else mixed audience defaults to contextual)");
+Check(!grown.Any(c => c.Method.Contains("CCPA", StringComparison.OrdinalIgnoreCase) || c.Method == "SetCcpaConsent"), "adult: no forced do-not-sell");
+Check(minor.All(c => c.TypeName.Contains(", GoogleMobileAds.Mediation.")), "type names carry the adapter assembly");
+
 Console.WriteLine($"Age policy tests: {assertions} assertions passed");

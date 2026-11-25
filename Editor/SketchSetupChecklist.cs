@@ -32,6 +32,10 @@ namespace Sketch.Sdk.Editor
         /// <summary>Text of Assets/Plugins/Android/AndroidManifest.xml, null when the file is missing.</summary>
         public string AndroidManifestXml;
         public string[] EnabledScenes = Array.Empty<string>();
+        /// <summary>Installed mediation adapters (network names) whose privacy API SketchMediationPrivacy calls.</summary>
+        public List<string> MediationPrivacyNetworks = new List<string>();
+        /// <summary>Calls whose adapter is installed but the method is missing (API drift): "Network.Method".</summary>
+        public List<string> MediationPrivacyMissing = new List<string>();
     }
 
     /// <summary>Pure setup checklist (no AssetDatabase): settings + facts -> rows with OK / Info / Warning / Error.</summary>
@@ -149,6 +153,18 @@ namespace Sketch.Sdk.Editor
                 items.Add(new SketchCheckItem(AREA_CONSENT, "Consent (UMP)", SketchCheckStatus.Info, "Debug geography " + s.ConsentDebugGeography + " (development builds only)."));
             else
                 items.Add(Ok(AREA_CONSENT, "Consent (UMP)", s.RequestConsent ? "Consent form asked before ads (EEA/UK/US states)." : "Consent not requested (only OK outside regulated regions)."));
+
+            if (s.AdsBackend == SketchAdsBackend.AdMob)
+            {
+                items.Add(s.RequireAgeSignal
+                    ? Ok(AREA_CONSENT, "Age signals", "Consent and ads wait for the age bracket; unknown age = minor.")
+                    : new SketchCheckItem(AREA_CONSENT, "Age signals", SketchCheckStatus.Info, "Off. Turn on Require Age Signal when the Play target audience includes players under 18."));
+                if (f.MediationPrivacyMissing.Count > 0)
+                    items.Add(new SketchCheckItem(AREA_CONSENT, "Mediation privacy", SketchCheckStatus.Error,
+                        "Adapter privacy API missing (adapter updated?): " + string.Join(", ", f.MediationPrivacyMissing) + ". Do-not-sell / mixed-audience signals would not reach it."));
+                else if (f.MediationPrivacyNetworks.Count > 0)
+                    items.Add(Ok(AREA_CONSENT, "Mediation privacy", "Privacy APIs found: " + string.Join(", ", f.MediationPrivacyNetworks) + ". Also add each network to AdMob's EU and US-state ad partner lists."));
+            }
 
             // ---------------- Remote defaults ----------------
             if (s.RemoteDefaults != null)
