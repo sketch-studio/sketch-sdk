@@ -1,6 +1,6 @@
 {
   "name": "com.sketch.sdk.installer",
-  "version": "1.5.10",
+  "version": "1.5.11",
   "displayName": "Sketch SDK Installer",
   "description": "Editor-only installer that copies the Sketch SDK into Assets/SketchSdk, keeps it updated from git tags, hash-checks local edits and wires the splash scene.",
   "unity": "2021.3",

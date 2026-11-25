@@ -80,4 +80,5 @@ Check(SketchMediationPrivacy.Plan(false, false, false, null).Count == 0, "no US 
 Check(Has(SketchMediationPrivacy.Plan(true, true, true, false), "Liftoff", "SetCCPAStatus", false), "minor stays do-not-sell even when GPP says no opt-out");
 
 assertions += GppTests.Run();
+assertions += AdapterVersionTests.Run();
 Console.WriteLine($"Age policy tests: {assertions} assertions passed");

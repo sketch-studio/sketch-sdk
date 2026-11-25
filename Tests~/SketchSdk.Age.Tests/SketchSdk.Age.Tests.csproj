@@ -3,6 +3,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="GppTests.cs" />
+    <Compile Include="AdapterVersionTests.cs" />
+    <Compile Include="../../Runtime/Ads/SketchMediationAdapters.cs" />
     <Compile Include="../../Runtime/Consent/SketchGpp.cs" />
     <Compile Include="../../Runtime/Ads/SketchAdMobTag.cs" />
     <Compile Include="../../Runtime/Ads/SketchAdMobContentRating.cs" />

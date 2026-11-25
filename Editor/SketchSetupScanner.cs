@@ -28,6 +28,32 @@ namespace Sketch.Sdk.Editor
             }
         }
 
+        /// <summary>com.google.ads.mediation artifacts from every EDM *Dependencies.xml in Assets and resolved UPM packages.</summary>
+        static List<SketchMediationAdapter> FindMediationAdapters()
+        {
+            var found = new List<SketchMediationAdapter>();
+            var roots = new List<string> { "Assets/GoogleMobileAds/Mediation" };
+            foreach (string cache in new[] { "Library/PackageCache", "Packages" })
+            {
+                if (!Directory.Exists(cache)) continue;
+                try { roots.AddRange(Directory.GetDirectories(cache, "com.google.ads.mobile.mediation.*")); }
+                catch (Exception) { }
+            }
+            foreach (string root in roots)
+            {
+                if (!Directory.Exists(root)) continue;
+                IEnumerable<string> files;
+                try { files = Directory.GetFiles(root, "*Dependencies.xml", SearchOption.AllDirectories); }
+                catch (Exception) { continue; }
+                foreach (string file in files)
+                {
+                    try { found.AddRange(SketchMediationAdapters.ParseDependencies(File.ReadAllText(file))); }
+                    catch (Exception) { }
+                }
+            }
+            return found;
+        }
+
         public static SketchSetupFacts Scan(SketchSdkSettings settings)
         {
             var assemblies = new HashSet<string>(AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name));
@@ -50,6 +76,7 @@ namespace Sketch.Sdk.Editor
                 EnabledScenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
             };
             ScanMediationPrivacy(facts);
+            facts.MediationAdapters = SketchMediationAdapters.Review(FindMediationAdapters());
             foreach (SketchIapCatalog catalog in FindCatalogs())
             {
                 facts.SketchIapCatalogs++;

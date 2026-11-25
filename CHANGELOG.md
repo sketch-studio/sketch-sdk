@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.11
+- Setup checklist (Sketch SDK Manager > Consent) reviews every installed AdMob mediation adapter from its Dependencies.xml: Error when older than the version that forwards GDPR (TCF), TFUA and COPPA (Liftoff 7.7.4.2, Unity Ads 4.19.0.1, InMobi 11.3.0.1, BIGO 5.9.0.1), Warning for networks the SDK has not reviewed.
+- Policy rows: missing privacy policy URL (Error), location permission in the Android manifest (Warning), Require Age Signal without the Firebase ad-signal manifest defaults (Warning).
+- iOS reads the GPP keys from NSUserDefaults, so US-state opt-outs reach mediation networks on iOS too.
+
 ## 1.5.10
 - US-state opt-out forwarding: SketchGpp decodes the GPP string UMP stores (IABGPP_HDR_GppString, IABGPP_GppSID) for US National (v1, v2, v3 header-style) and state sections 8-27; GPC = opt-out; unknown section, version or unreadable string fails safe to opted out.
 - An opted-out US user (any age) gets do-not-sell on Liftoff, Unity Ads and BIGO and contextual-only Unity Ads, before MobileAds.Initialize and again after the privacy options form changes consent.

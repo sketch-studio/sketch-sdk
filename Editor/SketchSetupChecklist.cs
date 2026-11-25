@@ -36,6 +36,8 @@ namespace Sketch.Sdk.Editor
         public List<string> MediationPrivacyNetworks = new List<string>();
         /// <summary>Calls whose adapter is installed but the method is missing (API drift): "Network.Method".</summary>
         public List<string> MediationPrivacyMissing = new List<string>();
+        /// <summary>Installed AdMob mediation adapters (Android Dependencies.xml) reviewed for privacy forwarding.</summary>
+        public List<SketchMediationAdapterReview> MediationAdapters = new List<SketchMediationAdapterReview>();
     }
 
     /// <summary>Pure setup checklist (no AssetDatabase): settings + facts -> rows with OK / Info / Warning / Error.</summary>
@@ -164,6 +166,25 @@ namespace Sketch.Sdk.Editor
                         "Adapter privacy API missing (adapter updated?): " + string.Join(", ", f.MediationPrivacyMissing) + ". Do-not-sell / mixed-audience signals would not reach it."));
                 else if (f.MediationPrivacyNetworks.Count > 0)
                     items.Add(Ok(AREA_CONSENT, "Mediation privacy", "Privacy APIs found: " + string.Join(", ", f.MediationPrivacyNetworks) + ". Also add each network to AdMob's EU and US-state ad partner lists."));
+                foreach (SketchMediationAdapterReview a in f.MediationAdapters)
+                {
+                    string label = "Adapter privacy: " + a.Network;
+                    string detail = a.Version + " - " + a.Reason;
+                    if (a.Status == SketchAdapterPrivacyStatus.Ok) items.Add(Ok(AREA_CONSENT, label, detail));
+                    else items.Add(new SketchCheckItem(AREA_CONSENT, label,
+                        a.Status == SketchAdapterPrivacyStatus.TooOld ? SketchCheckStatus.Error : SketchCheckStatus.Warning, detail));
+                }
+                if (string.IsNullOrWhiteSpace(s.PrivacyPolicyUrl))
+                    items.Add(new SketchCheckItem(AREA_CONSENT, "Privacy policy URL", SketchCheckStatus.Error,
+                        "Empty. Google Play and AdMob require a privacy policy for apps with ads; use the same URL as Play Console > App content."));
+                string manifest = f.AndroidManifestXml ?? string.Empty;
+                if (manifest.Contains("ACCESS_FINE_LOCATION") || manifest.Contains("ACCESS_COARSE_LOCATION") || manifest.Contains("ACCESS_BACKGROUND_LOCATION"))
+                    items.Add(new SketchCheckItem(AREA_CONSENT, "Location permission", SketchCheckStatus.Warning,
+                        "The Android manifest asks for location. Ads do not need it; remove it unless gameplay does, and declare it in Data safety."));
+                if (s.RequireAgeSignal && f.FirebaseAnalyticsInstalled && s.FirebaseAnalytics && f.AndroidManifestXml != null &&
+                    !manifest.Contains("google_analytics_default_ad_personalization"))
+                    items.Add(new SketchCheckItem(AREA_CONSENT, "Firebase ad signals default", SketchCheckStatus.Warning,
+                        "Players may be minors: add <meta-data> google_analytics_default_allow_ad_personalization_signals, google_analytics_default_ad_user_data and google_analytics_default_ad_personalization = false to the manifest <application>; the SDK re-grants them for adults."));
             }
 
             // ---------------- Remote defaults ----------------

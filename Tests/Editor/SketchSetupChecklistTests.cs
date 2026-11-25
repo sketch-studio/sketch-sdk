@@ -20,6 +20,7 @@ namespace Sketch.Sdk.Tests
                 AppId = "ca-app-pub-1~2", Banner = "ca-app-pub-1/1", Interstitial = "ca-app-pub-1/2", Rewarded = "ca-app-pub-1/3",
                 AppOpen = "ca-app-pub-1/4", Native = "ca-app-pub-1/5", RewardedInterstitial = "ca-app-pub-1/6",
             };
+            _settings.PrivacyPolicyUrl = "https://example.com/privacy";
         }
 
         [TearDown]
@@ -183,6 +184,41 @@ namespace Sketch.Sdk.Tests
             SketchSetupFacts facts = GoodFacts();
             facts.MediationPrivacyMissing.Add("BIGO.SetCcpaConsent");
             Assert.AreEqual(SketchCheckStatus.Error, Find(SketchSetupChecklist.Build(_settings, facts), "Mediation privacy").Status);
+        }
+
+        [Test]
+        public void OldMediationAdapter_IsError_UnreviewedIsWarning()
+        {
+            SketchSetupFacts facts = GoodFacts();
+            facts.MediationAdapters = SketchMediationAdapters.Review(SketchMediationAdapters.ParseDependencies(
+                "com.google.ads.mediation:bigo:5.8.0.0 com.google.ads.mediation:vungle:7.7.9.0 com.google.ads.mediation:mintegral:16.9.71.0"));
+            var items = SketchSetupChecklist.Build(_settings, facts);
+            Assert.AreEqual(SketchCheckStatus.Error, Find(items, "Adapter privacy: BIGO Ads").Status);
+            Assert.AreEqual(SketchCheckStatus.Ok, Find(items, "Adapter privacy: Liftoff").Status);
+            Assert.AreEqual(SketchCheckStatus.Warning, Find(items, "Adapter privacy: mintegral").Status);
+        }
+
+        [Test]
+        public void MissingPrivacyPolicyUrl_IsError()
+        {
+            _settings.PrivacyPolicyUrl = "";
+            Assert.AreEqual(SketchCheckStatus.Error, Find(SketchSetupChecklist.Build(_settings, GoodFacts()), "Privacy policy URL").Status);
+        }
+
+        [Test]
+        public void LocationPermission_IsWarning()
+        {
+            SketchSetupFacts facts = GoodFacts();
+            facts.AndroidManifestXml += "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />";
+            Assert.AreEqual(SketchCheckStatus.Warning, Find(SketchSetupChecklist.Build(_settings, facts), "Location permission").Status);
+        }
+
+        [Test]
+        public void AgeSignals_WithoutFirebaseDefaults_IsWarning()
+        {
+            _settings.RequireAgeSignal = true;
+            _settings.FirebaseAnalytics = true;
+            Assert.AreEqual(SketchCheckStatus.Warning, Find(SketchSetupChecklist.Build(_settings, GoodFacts()), "Firebase ad signals default").Status);
         }
 
         [Test]

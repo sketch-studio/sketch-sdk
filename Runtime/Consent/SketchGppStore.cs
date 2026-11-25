@@ -5,8 +5,8 @@ namespace Sketch.Sdk
 {
     /// <summary>
     /// Reads the IAB GPP keys a CMP (Google UMP) writes on the device: IABGPP_HDR_GppString and IABGPP_GppSID in the
-    /// default SharedPreferences on Android, NSUserDefaults on iOS (read via PlayerPrefs is not possible there, so iOS
-    /// returns nothing until a native reader exists). Override Reader in tests or for another CMP storage.
+    /// default SharedPreferences on Android and NSUserDefaults (Unity PlayerPrefs) on iOS. Override Reader in tests or
+    /// for another CMP storage.
     /// </summary>
     public static class SketchGppStore
     {
@@ -41,6 +41,9 @@ namespace Sketch.Sdk
             {
                 return (ReadAny(prefs, GPP_STRING_KEY), ReadAny(prefs, GPP_SID_KEY));
             }
+#elif UNITY_IOS && !UNITY_EDITOR
+            // Unity's PlayerPrefs is NSUserDefaults.standardUserDefaults on iOS, where CMPs store the IABGPP_ keys.
+            return (ReadDefaults(GPP_STRING_KEY), ReadDefaults(GPP_SID_KEY));
 #else
             return (null, null);
 #endif
@@ -55,6 +58,17 @@ namespace Sketch.Sdk
             {
                 return value == null ? null : value.Call<string>("toString");
             }
+        }
+#endif
+
+#if UNITY_IOS && !UNITY_EDITOR
+        static string ReadDefaults(string key)
+        {
+            if (!PlayerPrefs.HasKey(key)) return null;
+            string text = PlayerPrefs.GetString(key, string.Empty);
+            if (!string.IsNullOrEmpty(text)) return text;
+            int number = PlayerPrefs.GetInt(key, int.MinValue);
+            return number == int.MinValue ? null : number.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 #endif
 
