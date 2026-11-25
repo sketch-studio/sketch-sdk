@@ -121,6 +121,7 @@ namespace Sketch.Sdk
             MobileAds.RaiseAdEventsOnUnityMainThread = true;
             MobileAds.SetiOSAppPauseOnBackground(true);
             ApplyRequestConfiguration();
+            SketchAdMobMediationPrivacy.ApplyBeforeInitialize(_config);
             LogEffectiveConfig();
             Debug.Log("[SketchAds] Starting Google Mobile Ads initialization.");
             MobileAds.Initialize(status =>
@@ -161,7 +162,7 @@ namespace Sketch.Sdk
             Debug.Log($"[SketchAds] Config: rewarded={Unit(_config.RewardedId)} interstitial={Unit(_config.InterstitialId)} banner={Unit(_config.BannerId)} " +
                       $"app_open={Unit(_config.AppOpenId)} native={Unit(_config.NativeId)} rewarded_interstitial={Unit(_config.RewardedInterstitialId)} " +
                       $"banner_slots={_namedBanners.Count} child_directed={_config.ChildDirected} under_age={_config.UnderAgeOfConsent} " +
-                      $"max_rating={_config.MaxContentRating} npa={_config.NonPersonalized} test_devices={(_config.TestDeviceIds ?? Array.Empty<string>()).Length} " +
+                      $"max_rating={_config.MaxContentRating} npa={_config.NonPersonalized} restrict_sale={_config.RestrictDataSale} test_devices={(_config.TestDeviceIds ?? Array.Empty<string>()).Length} " +
                       $"can_request_ads={SketchConsent.CanRequestAds}");
         }
 

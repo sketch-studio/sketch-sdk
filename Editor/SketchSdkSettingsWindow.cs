@@ -21,7 +21,7 @@ namespace Sketch.Sdk.Editor
             "AdMobBannerSlots",
             "Pacing.AppOpenEvery", "Pacing.AppOpenPresentationDelaySeconds",
             "Pacing.ResetInterstitialCooldownOnRewarded",
-            "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
+            "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "RequireAgeSignal", "ShowDefaultAgeGate", "MinorMaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
             "Pacing.AppOpenOnResume", "Pacing.AppOpenOnColdStart", "Pacing.AppOpenStartDelaySeconds", "Pacing.AppOpenMinBackgroundSeconds",
@@ -658,7 +658,14 @@ namespace Sketch.Sdk.Editor
             {
                 Field("ChildDirected", "Child directed", "COPPA tag. True only for apps for children.");
                 Field("UnderAgeOfConsent", "Under age of consent", "GDPR tag for users under the age of consent.");
-                Field("MaxContentRating", "Max ad content rating", "Highest ad content rating allowed.");
+                Field("MaxContentRating", "Max ad content rating", "Highest ad content rating allowed (the adult cap with age signals). Keep it within the app's own content rating.");
+                SketchEditorStyles.EndSection();
+            }
+            if (SketchEditorStyles.Section("cs_age", "Age signals (mixed audience)"))
+            {
+                Field("RequireAgeSignal", "Require age signal", "Play target audience includes under-18s: consent and ads wait for the age bracket; the tags above are then derived from it (unknown = minor).");
+                Field("ShowDefaultAgeGate", "Show default age screen", "Neutral birth-year keypad. Off when the game shows its own and calls SketchAudience.SetBracket.");
+                Field("MinorMaxContentRating", "Minor max ad rating", "Ad content rating cap for players under 18 (under 13 is always G).");
                 SketchEditorStyles.EndSection();
             }
             if (SketchEditorStyles.Section("cs_code", "Code"))

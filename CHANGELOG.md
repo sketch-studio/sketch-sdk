@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.8
+- Age signals for mixed-audience games (Settings > Require Age Signal): consent and ads wait until the age bracket is known; an unknown age is treated as a minor, never as an adult.
+- Neutral birth-year age screen (SketchAgeGate) and SketchAudience API (SetBracket, UseStore for the game save, Changed).
+- Age-derived AdMob tags: under 13 TFCD + TFUA + G; 13-15 TFUA; minors npa with a separate Minor Max Content Rating (default T); UMP gets the matching TFUA.
+- Minors: Firebase Consent Mode ad_user_data / ad_personalization denied; Liftoff (AdMob mediation) SetCCPAStatus(false) by reflection, adapters kept by link.xml.
+
 ## 1.5.7
 - AdMob load failures log one [SketchAds][LoadFailed] line per request: Google error constant, domain, message, cause, response id, every mediation adapter tried (source, class, latency, error) and a hint, plus a per-format loaded/failed tally (SketchAds.LoadSummary).
 - ad_load_failed analytics now carries response_id and a compact adapters list; the Android custom native loader sends the same detail.

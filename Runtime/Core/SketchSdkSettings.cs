@@ -95,7 +95,16 @@ namespace Sketch.Sdk
         public List<string> TestDeviceIds = new List<string>();
         public SketchAdMobTag ChildDirected = SketchAdMobTag.Unspecified;
         public SketchAdMobTag UnderAgeOfConsent = SketchAdMobTag.Unspecified;
+        [Tooltip("Max ad content rating. With Require Age Signal it is the adult cap; keep it within the app's own content rating.")]
         public SketchAdMobContentRating MaxContentRating = SketchAdMobContentRating.General;
+
+        [Header("Age signals (mixed audience)")]
+        [Tooltip("Ask consent and start ads only once the player's age bracket is known. ChildDirected / UnderAgeOfConsent above are then derived from the age (unknown = minor).")]
+        public bool RequireAgeSignal;
+        [Tooltip("Show the SDK's neutral birth-year screen when the age is unknown. Turn off when the game shows its own and calls SketchAudience.SetBracket.")]
+        public bool ShowDefaultAgeGate = true;
+        [Tooltip("Max ad content rating for players under 18 (clamped to Max Content Rating). Under 13 is always G.")]
+        public SketchAdMobContentRating MinorMaxContentRating = SketchAdMobContentRating.Teen;
         [Tooltip("Seconds the native ad may take to attach before it is closed as LoadFailed (0 = no limit).")]
         public float NativeAttachTimeoutSeconds = 3f;
         [Tooltip("Seconds before the native in-rect close (X) can be tapped (0 = at once). Remote key sketch_native_close_delay overrides it.")]
@@ -187,7 +196,7 @@ namespace Sketch.Sdk
 #if UNITY_IOS
             ios = true;
 #endif
-            return new SketchAdMobConfig
+            var config = new SketchAdMobConfig
             {
                 BannerId = Pick(ids.Banner, test, SketchAdMobTestIds.Banner(ios)),
                 BannerSlots = AdMobBannerSlots?.ToArray() ?? Array.Empty<SketchAdMobBannerSlot>(),
@@ -204,6 +213,18 @@ namespace Sketch.Sdk
                 NonPersonalized = false,
                 NativeAttachTimeoutSeconds = NativeAttachTimeoutSeconds,
             };
+            if (RequireAgeSignal) ApplyAgeSignals(config, SketchAudience.Signals(this));
+            return config;
+        }
+
+        /// <summary>Age-derived tags replace the static ones (a missing age is treated as a minor).</summary>
+        public static void ApplyAgeSignals(SketchAdMobConfig config, SketchAgeAdSignals signals)
+        {
+            config.ChildDirected = signals.ChildDirected;
+            config.UnderAgeOfConsent = signals.UnderAgeOfConsent;
+            config.MaxContentRating = signals.MaxContentRating;
+            config.NonPersonalized = signals.NonPersonalized;
+            config.RestrictDataSale = !signals.AdPersonalizationAllowed;
         }
 
         /// <summary>Test mode keeps a format off when its real id is blank, so a game only loads the formats it uses.</summary>

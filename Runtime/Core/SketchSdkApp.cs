@@ -65,14 +65,39 @@ namespace Sketch.Sdk
             });
             Step("session event", () => SketchAnalytics.Log("sketch_session_start", "session", SketchIdentity.Session, "app_version", SketchAppVersion.Code, "version_name", Application.version, "sdk_version", SketchSdkVersion.VERSION));
 
+            if (settings.RequireAgeSignal && !SketchAudience.IsKnown)
+            {
+                // Mixed audience: the age decides TFCD/TFUA, so neither the consent form nor an ad request may run first.
+                SketchLog.Info("Age bracket unknown; consent and ads wait for the age screen.");
+                SketchAnalytics.Log("sketch_ads_waiting_age");
+                SketchAudience.Changed += OnAgeKnown;
+                if (settings.ShowDefaultAgeGate) SketchAgeGate.ShowWhenSceneReady();
+                return;
+            }
+            GatherConsent(settings);
+        }
+
+        static void OnAgeKnown()
+        {
+            if (!SketchAudience.IsKnown || Settings == null) return;
+            SketchAudience.Changed -= OnAgeKnown;
+            GatherConsent(Settings);
+        }
+
+        static void GatherConsent(SketchSdkSettings settings)
+        {
             ISketchConsentProvider consent = null;
             Step("consent provider", () => consent = CreateConsent(settings));
+            bool underAge = settings.RequireAgeSignal
+                ? SketchAudience.Signals(settings).UnderAgeOfConsent == SketchAdMobTag.True
+                : settings.UnderAgeOfConsent == SketchAdMobTag.True;
             var request = new SketchConsentRequest
             {
                 DebugGeography = settings.ConsentDebugGeography,
                 TestDeviceIds = settings.TestDeviceIds != null ? settings.TestDeviceIds.ToArray() : Array.Empty<string>(),
-                TagForUnderAgeOfConsent = settings.UnderAgeOfConsent == SketchAdMobTag.True,
+                TagForUnderAgeOfConsent = underAge,
             };
+            if (settings.RequireAgeSignal) SketchLog.Info($"Age signals: bracket={SketchAudience.Bracket} {SketchAudience.Signals(settings)}");
             // Every consent outcome converges on ONE ads start (Bounce Thunder_AdmobManager rule).
             SketchConsent.Gather(consent, request, () => StartAfterTrackingAuthorization(settings));
         }

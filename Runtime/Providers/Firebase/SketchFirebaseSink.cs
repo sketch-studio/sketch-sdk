@@ -46,11 +46,44 @@ namespace Sketch.Sdk
             _ready = true;
             // Collection state is the game's decision (consent, kids apps); the SDK never turns it on.
             SketchLog.Info("Firebase Analytics ready.");
+            ApplyAgeConsent();
+            SketchAudience.Changed -= ApplyAgeConsent;
+            SketchAudience.Changed += ApplyAgeConsent;
+            SketchSdkApp.WhenReady(ApplyAgeConsent);
             foreach (Action action in _pending)
             {
                 try { action(); } catch (Exception e) { SketchLog.Warn("Firebase log failed: " + e.Message); }
             }
             _pending.Clear();
+        }
+
+        /// <summary>
+        /// Consent Mode v2 for minors (and an unknown age under Require Age Signal): ad_user_data and ad_personalization are
+        /// denied so Analytics never feeds ad personalization. Adults keep the defaults (UMP / TCF decide in the EEA).
+        /// </summary>
+        static void ApplyAgeConsent()
+        {
+            SketchSdkSettings settings = SketchSdkApp.Settings;
+            if (settings == null || !settings.RequireAgeSignal) return;
+            bool adult = SketchAudience.Signals(settings).AdPersonalizationAllowed;
+            if (adult)
+            {
+                // Re-grant only after consent is gathered and only where no consent regulation applies (no privacy
+                // options form); in the EEA/UK/CH the TCF string from UMP stays the authority and the denial is kept.
+                if (!SketchConsent.IsGathered || SketchConsent.IsPrivacyOptionsRequired) return;
+            }
+            ConsentStatus status = adult ? ConsentStatus.Granted : ConsentStatus.Denied;
+            try
+            {
+                FirebaseAnalytics.SetConsent(new Dictionary<ConsentType, ConsentStatus>
+                {
+                    { ConsentType.AdUserData, status },
+                    { ConsentType.AdPersonalization, status },
+                });
+                FirebaseAnalytics.SetUserProperty(FirebaseAnalytics.UserPropertyAllowAdPersonalizationSignals, adult ? "true" : "false");
+                SketchLog.Info("Firebase ad consent for age: " + status);
+            }
+            catch (Exception e) { SketchLog.Warn("Firebase age consent failed: " + e.Message); }
         }
 
         void Run(Action action)

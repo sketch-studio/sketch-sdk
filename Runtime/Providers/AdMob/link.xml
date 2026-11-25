@@ -1,0 +1,8 @@
+<linker>
+  <!-- Optional AdMob mediation adapters called by reflection (SketchAdMobMediationPrivacy). Missing ones are ignored. -->
+  <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.Api" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.Common" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.Android" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.iOS" preserve="all" ignoreIfMissing="1" />
+  <assembly fullname="GoogleMobileAds.Mediation.LiftoffMonetize.Mediation" preserve="all" ignoreIfMissing="1" />
+</linker>
