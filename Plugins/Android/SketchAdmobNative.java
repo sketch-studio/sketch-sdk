@@ -27,7 +27,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.android.gms.ads.AdError;
 import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdapterResponseInfo;
+import com.google.android.gms.ads.ResponseInfo;
 import com.google.android.gms.ads.AdLoader;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.LoadAdError;
@@ -171,7 +174,8 @@ public final class SketchAdmobNative {
                         failures++;
                         long delay = Math.min(60000L, 10000L * (1L << (Math.max(1, Math.min(failures, 4)) - 1)));
                         nextLoadAt = SystemClock.elapsedRealtime() + delay;
-                        send("OnNativeLoadFailed", error.getCode() + "|" + clean(error.getMessage()));
+                        send("OnNativeLoadFailed", error.getCode() + "|" + clean(error.getMessage()) + "|" + clean(error.getDomain())
+                                + "|" + responseIdOf(error) + "|" + adaptersOf(error));
                         scheduleLoad(delay);
                     }
                     @Override public void onAdClicked() {
@@ -458,6 +462,26 @@ public final class SketchAdmobNative {
 
     private static String clean(String value) {
         return value == null ? "" : value.replace("|", "/");
+    }
+
+    private static String responseIdOf(LoadAdError error) {
+        ResponseInfo info = error.getResponseInfo();
+        return info == null ? "" : clean(info.getResponseId());
+    }
+
+    // "Source:code/latencyms;..." (ok when the source loaded), same shape as the C# SketchAdLoadDiagnostics.AdapterSummary.
+    private static String adaptersOf(LoadAdError error) {
+        ResponseInfo info = error.getResponseInfo();
+        if (info == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (AdapterResponseInfo adapter : info.getAdapterResponses()) {
+            if (sb.length() > 0) sb.append(';');
+            AdError adapterError = adapter.getAdError();
+            sb.append(clean(adapter.getAdSourceName()).replace(";", ",")).append(':')
+              .append(adapterError == null ? "ok" : String.valueOf(adapterError.getCode()))
+              .append('/').append(adapter.getLatencyMillis()).append("ms");
+        }
+        return sb.toString();
     }
 
     private static TextView label(Activity activity, float sp, int color, int style) {

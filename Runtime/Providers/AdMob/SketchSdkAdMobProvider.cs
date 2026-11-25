@@ -8,7 +8,7 @@ using Sketch.Sdk;
 namespace Sketch.Sdk
 {
     public sealed class SketchSdkAdMobProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchAdCloseCapability,
-        ISketchRewardedInterstitialProvider, ISketchNamedBannerProvider
+        ISketchRewardedInterstitialProvider, ISketchNamedBannerProvider, ISketchAdInspectorProvider
     {
         readonly SketchAdMobConfig _config;
         readonly ISketchAdsTelemetry _telemetry;
@@ -121,6 +121,7 @@ namespace Sketch.Sdk
             MobileAds.RaiseAdEventsOnUnityMainThread = true;
             MobileAds.SetiOSAppPauseOnBackground(true);
             ApplyRequestConfiguration();
+            LogEffectiveConfig();
             Debug.Log("[SketchAds] Starting Google Mobile Ads initialization.");
             MobileAds.Initialize(status =>
             {
@@ -137,6 +138,31 @@ namespace Sketch.Sdk
                 SketchSdkLoop.Update += TickReloads;
                 onInitialized?.Invoke(true);
             });
+        }
+
+        public void OpenAdInspector(Action<string> onClosed)
+        {
+            if (!_initialized) { onClosed?.Invoke("Google Mobile Ads is not initialized yet."); return; }
+            try
+            {
+                MobileAds.OpenAdInspector(error => OnMainThread(() =>
+                {
+                    string message = error == null ? null : $"code={ErrCode(error)} {ErrMsg(error)}";
+                    if (message != null) Debug.LogWarning("[SketchAds] Ad Inspector: " + message + " (the device must be a registered AdMob test device)");
+                    onClosed?.Invoke(message);
+                }));
+            }
+            catch (Exception e) { onClosed?.Invoke("Ad Inspector threw: " + e.Message); }
+        }
+
+        void LogEffectiveConfig()
+        {
+            string Unit(string id) => SketchAdMobConfig.IsUsableId(id) ? id : "-";
+            Debug.Log($"[SketchAds] Config: rewarded={Unit(_config.RewardedId)} interstitial={Unit(_config.InterstitialId)} banner={Unit(_config.BannerId)} " +
+                      $"app_open={Unit(_config.AppOpenId)} native={Unit(_config.NativeId)} rewarded_interstitial={Unit(_config.RewardedInterstitialId)} " +
+                      $"banner_slots={_namedBanners.Count} child_directed={_config.ChildDirected} under_age={_config.UnderAgeOfConsent} " +
+                      $"max_rating={_config.MaxContentRating} npa={_config.NonPersonalized} test_devices={(_config.TestDeviceIds ?? Array.Empty<string>()).Length} " +
+                      $"can_request_ads={SketchConsent.CanRequestAds}");
         }
 
         static void DevWarn(string msg)
@@ -548,8 +574,90 @@ namespace Sketch.Sdk
         static string ErrMsg(AdError e) { try { string m = e == null ? string.Empty : e.GetMessage() ?? string.Empty; return m.Length > 120 ? m.Substring(0, 120) : m; } catch { return string.Empty; } }
         static string SourceOf(ResponseInfo info) { try { return info?.GetLoadedAdapterResponseInfo()?.AdSourceName ?? string.Empty; } catch { return string.Empty; } }
 
-        void LogLoaded(string format, string unit, ResponseInfo info) => LogAd("ad_loaded", format, unit, "ad_source", SourceOf(info));
-        void LogLoadFailed(string format, string unit, AdError error) => LogAd("ad_load_failed", format, unit, "code", ErrCode(error), "message", ErrMsg(error));
+        void LogLoaded(string format, string unit, ResponseInfo info)
+        {
+            SketchAdLoadDiagnostics.RecordLoaded(format);
+            string responseId = null;
+            try { responseId = info?.GetResponseId(); } catch { }
+            Debug.Log($"[SketchAds][Loaded] format={format} unit={unit} source={SourceOf(info)} response_id={responseId} || {SketchAdLoadDiagnostics.Summary(format)}");
+            LogAd("ad_loaded", format, unit, "ad_source", SourceOf(info));
+        }
+
+        void LogLoadFailed(string format, string unit, AdError error) => ReportLoadFailure(ToFailure(format, unit, error));
+
+        // One line per failed request with the Google constant, every mediation source tried and the running per-format tally.
+        void ReportLoadFailure(SketchAdLoadFailure failure)
+        {
+#if UNITY_IOS
+            const bool ios = true;
+#else
+            const bool ios = false;
+#endif
+            SketchAdLoadDiagnostics.RecordFailure(failure.Format, failure.Code);
+            Debug.LogWarning($"[SketchAds][LoadFailed] {SketchAdLoadDiagnostics.Describe(failure, ios)} || {SketchAdLoadDiagnostics.Summary(failure.Format)}");
+            string message = failure.Message ?? string.Empty;
+            OnMainThread(() =>
+            {
+                try
+                {
+                    _telemetry?.Track(new SketchAdTelemetryEvent
+                    {
+                        Name = "ad_load_failed",
+                        Format = failure.Format,
+                        Placement = _telemetry?.PlacementFor(failure.Format) ?? failure.Format,
+                        AdUnitId = failure.AdUnitId ?? string.Empty,
+                        Code = failure.Code.ToString(),
+                        Message = message.Length > 100 ? message.Substring(0, 100) : message,
+                        ResponseId = failure.ResponseId,
+                        Adapters = SketchAdLoadDiagnostics.AdapterSummary(failure, 100),
+                    });
+                }
+                catch (Exception e) { Debug.LogWarning("[SketchAds] Ad telemetry failed: " + e.Message); }
+            });
+        }
+
+        static SketchAdLoadFailure ToFailure(string format, string unit, AdError error)
+        {
+            var failure = new SketchAdLoadFailure { Format = format, AdUnitId = unit, Code = -1 };
+            if (error == null) { failure.Message = "null error"; return failure; }
+            try
+            {
+                failure.Code = error.GetCode();
+                failure.Domain = error.GetDomain();
+                failure.Message = error.GetMessage();
+                failure.Cause = error.GetCause()?.GetMessage();
+            }
+            catch (Exception e) { failure.Message = failure.Message ?? "error read failed: " + e.Message; }
+            ResponseInfo info = null;
+            try { info = (error as LoadAdError)?.GetResponseInfo(); } catch { }
+            if (info == null) return failure;
+            try
+            {
+                failure.ResponseId = info.GetResponseId();
+                failure.MediationAdapterClass = info.GetMediationAdapterClassName();
+                var responses = info.GetAdapterResponses();
+                if (responses != null)
+                {
+                    failure.Adapters = new List<SketchAdapterAttempt>(responses.Count);
+                    foreach (AdapterResponseInfo response in responses)
+                    {
+                        if (response == null) continue;
+                        AdError adapterError = response.AdError;
+                        failure.Adapters.Add(new SketchAdapterAttempt
+                        {
+                            AdSourceName = response.AdSourceName,
+                            AdSourceId = response.AdSourceId,
+                            AdapterClass = response.AdapterClassName,
+                            LatencyMillis = response.LatencyMillis,
+                            ErrorCode = adapterError != null ? adapterError.GetCode() : SketchAdapterAttempt.NO_ERROR,
+                            ErrorMessage = adapterError?.GetMessage(),
+                        });
+                    }
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("[SketchAds] ResponseInfo read failed: " + e.Message); }
+            return failure;
+        }
 
         void HookLife(RewardedAd ad, string format, string unit)
         {
@@ -615,8 +723,8 @@ namespace Sketch.Sdk
         {
             if (_javaNativeHooked) return;
             _javaNativeHooked = true;
-            SketchAndroidNative.Loaded += () => LogAd("ad_loaded", "native", _config.NativeId);
-            SketchAndroidNative.LoadFailed += payload => LogAd("ad_load_failed", "native", _config.NativeId, "message", payload);
+            SketchAndroidNative.Loaded += () => LogLoaded("native", _config.NativeId, null);
+            SketchAndroidNative.LoadFailed += payload => ReportLoadFailure(SketchAdLoadDiagnostics.ParseJavaNativeFailure(_config.NativeId, payload));
             SketchAndroidNative.Clicked += () => { LogAd("ad_clicked", "native", _config.NativeId); _nativeCallbacks?.Clicked(); };
             SketchAndroidNative.Shown += () =>
             {
@@ -827,11 +935,13 @@ namespace Sketch.Sdk
                 if (state.View != view) return;
                 state.Loaded = true;
                 state.Failures = 0;
+                LogLoaded("banner_" + state.Config.Name, state.Id, SafeInfo(view.GetResponseInfo));
                 UpdateNamedBanner(state, SketchAds.Policy.CanShowBanner(SketchIdentity.NowUnix), Now);
             });
-            view.OnBannerAdLoadFailed += _ => OnMainThread(() =>
+            view.OnBannerAdLoadFailed += error => OnMainThread(() =>
             {
                 if (state.View != view) return;
+                LogLoadFailed("banner_" + state.Config.Name, state.Id, error);
                 state.View = null;
                 state.Loaded = state.Visible = false;
                 state.RetryAt = Now + Backoff(++state.Failures);

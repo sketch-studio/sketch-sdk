@@ -9,5 +9,8 @@ namespace Sketch.Sdk
         public string AdSource { get; set; }
         public string Code { get; set; }
         public string Message { get; set; }
+        public string ResponseId { get; set; }
+        /// <summary>Compact mediation waterfall: "Source:code/latencyms;...".</summary>
+        public string Adapters { get; set; }
     }
 }

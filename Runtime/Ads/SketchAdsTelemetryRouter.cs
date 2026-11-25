@@ -33,7 +33,12 @@ namespace Sketch.Sdk
             if (adEvent == null || string.IsNullOrEmpty(adEvent.Name)) return;
             if (!LogLoadEvents && (adEvent.Name == "ad_loaded" || adEvent.Name == "ad_load_failed")) return;
             if (!TryAcceptAdLog()) return;
-            var parameters = new Dictionary<string, object>(6)
+            SketchAnalytics.Log(adEvent.Name, BuildParameters(adEvent));
+        }
+
+        public static Dictionary<string, object> BuildParameters(SketchAdTelemetryEvent adEvent)
+        {
+            var parameters = new Dictionary<string, object>(8)
             {
                 ["format"] = adEvent.Format ?? string.Empty,
                 ["placement"] = adEvent.Placement ?? string.Empty,
@@ -41,7 +46,9 @@ namespace Sketch.Sdk
             if (!string.IsNullOrEmpty(adEvent.AdSource)) parameters["ad_source"] = adEvent.AdSource;
             if (!string.IsNullOrEmpty(adEvent.Code)) parameters["code"] = adEvent.Code;
             if (!string.IsNullOrEmpty(adEvent.Message)) parameters["message"] = adEvent.Message;
-            SketchAnalytics.Log(adEvent.Name, parameters);
+            if (!string.IsNullOrEmpty(adEvent.ResponseId)) parameters["response_id"] = adEvent.ResponseId;
+            if (!string.IsNullOrEmpty(adEvent.Adapters)) parameters["adapters"] = adEvent.Adapters;
+            return parameters;
         }
 
         public void TrackRevenue(SketchAdRevenue revenue) => SketchAnalytics.LogAdRevenue(revenue);

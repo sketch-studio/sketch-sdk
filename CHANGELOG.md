@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.7
+- AdMob load failures log one [SketchAds][LoadFailed] line per request: Google error constant, domain, message, cause, response id, every mediation adapter tried (source, class, latency, error) and a hint, plus a per-format loaded/failed tally (SketchAds.LoadSummary).
+- ad_load_failed analytics now carries response_id and a compact adapters list; the Android custom native loader sends the same detail.
+- Effective AdMob request configuration is logged at init.
+- Development builds: hold four fingers for two seconds to open AdMob Ad Inspector (SketchAds.OpenAdInspector). Compiled out of release builds.
+
 ## 1.5.6
 - Detect manually imported AdMob mediation adapters before installing a duplicate through Package Manager.
 - Cover concurrent consent refresh and duplicate provider callbacks in PlayMode.

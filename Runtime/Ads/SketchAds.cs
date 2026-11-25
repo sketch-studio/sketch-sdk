@@ -381,6 +381,16 @@ namespace Sketch.Sdk
         {
             if (SketchSdk.Provider is ISketchNamedBannerProvider provider) provider.ReleaseAllBanners();
         }
+
+        /// <summary>Debug only: AdMob Ad Inspector (works on a registered test device). onClosed gets null or an error.</summary>
+        public static void OpenAdInspector(Action<string> onClosed = null)
+        {
+            if (SketchSdk.Provider is ISketchAdInspectorProvider provider) provider.OpenAdInspector(onClosed);
+            else onClosed?.Invoke("The current ads provider has no inspector.");
+        }
+
+        /// <summary>Loaded / failed tally per format since launch, e.g. "interstitial attempts=12 loaded=1 failed=11 match=8.3% [code3 x11]".</summary>
+        public static string LoadSummary(string format) => SketchAdLoadDiagnostics.Summary(format);
         /// <summary>Current banner height in screen pixels (0 when hidden). Use it to lift bottom UI.</summary>
         public static float BannerHeightPixels => SketchSdk.BannerHeightPixels;
         /// <summary>Raised on the main thread when the banner height changes.</summary>
