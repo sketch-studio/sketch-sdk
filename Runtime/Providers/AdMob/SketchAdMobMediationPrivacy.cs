@@ -11,10 +11,13 @@ namespace Sketch.Sdk
     /// </summary>
     static class SketchAdMobMediationPrivacy
     {
-        public static void ApplyBeforeInitialize(SketchAdMobConfig config)
+        /// <summary>Run before MobileAds.Initialize and again whenever consent changes (privacy options form).</summary>
+        public static void Apply(SketchAdMobConfig config)
         {
             if (config == null) return;
-            foreach (SketchMediationPrivacyCall call in SketchMediationPrivacy.Plan(config.AgeSignalActive, config.RestrictDataSale, config.NonPersonalized))
+            bool? gpp = SketchGppStore.UsOptOut();
+            if (gpp.HasValue) SketchLog.Info("GPP US opt-out: " + gpp.Value);
+            foreach (SketchMediationPrivacyCall call in SketchMediationPrivacy.Plan(config.AgeSignalActive, config.RestrictDataSale, config.NonPersonalized, gpp))
                 Invoke(call);
         }
 

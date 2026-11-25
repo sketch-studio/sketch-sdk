@@ -121,7 +121,10 @@ namespace Sketch.Sdk
             MobileAds.RaiseAdEventsOnUnityMainThread = true;
             MobileAds.SetiOSAppPauseOnBackground(true);
             ApplyRequestConfiguration();
-            SketchAdMobMediationPrivacy.ApplyBeforeInitialize(_config);
+            SketchAdMobMediationPrivacy.Apply(_config);
+            // A later choice in the privacy options form (UMP rewrites the GPP keys) reaches the networks too.
+            SketchConsent.Changed -= ReapplyMediationPrivacy;
+            SketchConsent.Changed += ReapplyMediationPrivacy;
             LogEffectiveConfig();
             Debug.Log("[SketchAds] Starting Google Mobile Ads initialization.");
             MobileAds.Initialize(status =>
@@ -140,6 +143,8 @@ namespace Sketch.Sdk
                 onInitialized?.Invoke(true);
             });
         }
+
+        void ReapplyMediationPrivacy() => SketchAdMobMediationPrivacy.Apply(_config);
 
         public void OpenAdInspector(Action<string> onClosed)
         {

@@ -2,6 +2,8 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="GppTests.cs" />
+    <Compile Include="../../Runtime/Consent/SketchGpp.cs" />
     <Compile Include="../../Runtime/Ads/SketchAdMobTag.cs" />
     <Compile Include="../../Runtime/Ads/SketchAdMobContentRating.cs" />
     <Compile Include="../../Runtime/Consent/SketchAgePolicy.cs" />

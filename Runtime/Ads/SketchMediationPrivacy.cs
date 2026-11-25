@@ -42,8 +42,14 @@ namespace Sketch.Sdk
         /// <param name="ageSignalActive">Require Age Signal is on and the bracket decided the signals.</param>
         /// <param name="restrictSale">Opt out of data sale / sharing (minors, unknown age).</param>
         /// <param name="nonBehavioral">Contextual ads only (minors, unknown age).</param>
-        public static IReadOnlyList<SketchMediationPrivacyCall> Plan(bool ageSignalActive, bool restrictSale, bool nonBehavioral)
+        /// <param name="gppUsOptOut">SketchGpp.UsOptOut of the stored UMP signal: true = US opt-out of sale/sharing/targeting.</param>
+        public static IReadOnlyList<SketchMediationPrivacyCall> Plan(bool ageSignalActive, bool restrictSale, bool nonBehavioral, bool? gppUsOptOut = null)
         {
+            if (gppUsOptOut == true)
+            {
+                restrictSale = true;
+                nonBehavioral = true;
+            }
             var calls = new List<SketchMediationPrivacyCall>(4);
             if (restrictSale)
             {

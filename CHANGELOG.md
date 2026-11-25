@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.10
+- US-state opt-out forwarding: SketchGpp decodes the GPP string UMP stores (IABGPP_HDR_GppString, IABGPP_GppSID) for US National (v1, v2, v3 header-style) and state sections 8-27; GPC = opt-out; unknown section, version or unreadable string fails safe to opted out.
+- An opted-out US user (any age) gets do-not-sell on Liftoff, Unity Ads and BIGO and contextual-only Unity Ads, before MobileAds.Initialize and again after the privacy options form changes consent.
+- SketchGppStore reads the keys from Android default SharedPreferences (iOS: not yet).
+
 ## 1.5.9
 - Mediation privacy as data (SketchMediationPrivacy): calls AdMob adapters do not forward, made before MobileAds.Initialize. Minors / unknown age: Liftoff SetCCPAStatus(false), Unity Ads privacy.consent=false, BIGO SetCcpaConsent(false). Unity Ads Mixed Audience: user.nonbehavioral per player (true for minors, false for adults). InMobi needs no call (adapter forwards TFCD/TFUA/COPPA, reads the IAB US Privacy string).
 - A failing call on an installed adapter logs an error and sends mediation_privacy_failed; missing adapters are skipped. link.xml keeps the Unity Ads and BIGO adapter APIs.

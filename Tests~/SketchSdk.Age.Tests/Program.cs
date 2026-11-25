@@ -68,4 +68,16 @@ Check(Has(grown, "UnityAds", "SetConsentMetaData", "user.nonbehavioral", false),
 Check(!grown.Any(c => c.Method.Contains("CCPA", StringComparison.OrdinalIgnoreCase) || c.Method == "SetCcpaConsent"), "adult: no forced do-not-sell");
 Check(minor.All(c => c.TypeName.Contains(", GoogleMobileAds.Mediation.")), "type names carry the adapter assembly");
 
+// US-state opt-out from GPP (UMP) for adults and for games without age signals.
+var adultOptOut = SketchMediationPrivacy.Plan(ageSignalActive: true, restrictSale: false, nonBehavioral: false, gppUsOptOut: true);
+Check(Has(adultOptOut, "Liftoff", "SetCCPAStatus", false) && Has(adultOptOut, "BIGO", "SetCcpaConsent", false) && Has(adultOptOut, "UnityAds", "SetConsentMetaData", "privacy.consent", false), "adult GPP opt-out: do-not-sell on every network");
+Check(Has(adultOptOut, "UnityAds", "SetConsentMetaData", "user.nonbehavioral", true), "adult GPP opt-out: no targeted ads on Unity Ads");
+var adultStays = SketchMediationPrivacy.Plan(ageSignalActive: true, restrictSale: false, nonBehavioral: false, gppUsOptOut: false);
+Check(!Has(adultStays, "Liftoff", "SetCCPAStatus", false) && Has(adultStays, "UnityAds", "SetConsentMetaData", "user.nonbehavioral", false), "adult did not opt out: personalised ads kept");
+var noAgeOptOut = SketchMediationPrivacy.Plan(ageSignalActive: false, restrictSale: false, nonBehavioral: false, gppUsOptOut: true);
+Check(Has(noAgeOptOut, "BIGO", "SetCcpaConsent", false) && !noAgeOptOut.Any(c => c.Args.Length == 2 && (string)c.Args[0] == "user.nonbehavioral"), "game without age signals still forwards the US opt-out");
+Check(SketchMediationPrivacy.Plan(false, false, false, null).Count == 0, "no US section: nothing");
+Check(Has(SketchMediationPrivacy.Plan(true, true, true, false), "Liftoff", "SetCCPAStatus", false), "minor stays do-not-sell even when GPP says no opt-out");
+
+assertions += GppTests.Run();
 Console.WriteLine($"Age policy tests: {assertions} assertions passed");
