@@ -99,10 +99,8 @@ namespace Sketch.Sdk
         public SketchAdMobContentRating MaxContentRating = SketchAdMobContentRating.General;
 
         [Header("Age signals (mixed audience)")]
-        [Tooltip("Ask consent and start ads only once the player's age bracket is known. ChildDirected / UnderAgeOfConsent above are then derived from the age (unknown = minor).")]
+        [Tooltip("Ask consent and start ads only once the game reports the player's age bracket (SketchAudience.SetBracket). The SDK never shows an age popup. ChildDirected / UnderAgeOfConsent above are then derived from the age (unknown = minor).")]
         public bool RequireAgeSignal;
-        [Tooltip("Show the SDK's neutral birth-year screen when the age is unknown. Turn off when the game shows its own and calls SketchAudience.SetBracket.")]
-        public bool ShowDefaultAgeGate = true;
         [Tooltip("Max ad content rating for players under 18 (clamped to Max Content Rating). Under 13 is always G.")]
         public SketchAdMobContentRating MinorMaxContentRating = SketchAdMobContentRating.Teen;
         [Tooltip("Seconds the native ad may take to attach before it is closed as LoadFailed (0 = no limit).")]

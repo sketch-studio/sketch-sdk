@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.13
+- Removed the built-in birth-year age screen (SketchAgeGate) and the Show Default Age Gate setting: the SDK never shows a popup asking the player anything except the legally required UMP consent form in regulated regions. Require Age Signal stays opt-in for games that ask the age themselves and call SketchAudience.SetBracket.
+
 ## 1.5.12
 - Manager > Ads: the Unity Ads adapter row installs com.google.ads.mobile.mediation.unity (the old id ...mediation.unityads does not exist on OpenUPM); new InMobi and BIGO Ads rows.
 

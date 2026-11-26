@@ -68,10 +68,9 @@ namespace Sketch.Sdk
             if (settings.RequireAgeSignal && !SketchAudience.IsKnown)
             {
                 // Mixed audience: the age decides TFCD/TFUA, so neither the consent form nor an ad request may run first.
-                SketchLog.Info("Age bracket unknown; consent and ads wait for the age screen.");
+                SketchLog.Info("Age bracket unknown; consent and ads wait for the game to call SketchAudience.SetBracket (the SDK never shows an age popup).");
                 SketchAnalytics.Log("sketch_ads_waiting_age");
                 SketchAudience.Changed += OnAgeKnown;
-                if (settings.ShowDefaultAgeGate) SketchAgeGate.ShowWhenSceneReady();
                 return;
             }
             GatherConsent(settings);

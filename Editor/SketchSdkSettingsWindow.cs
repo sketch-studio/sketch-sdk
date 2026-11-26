@@ -21,7 +21,7 @@ namespace Sketch.Sdk.Editor
             "AdMobBannerSlots",
             "Pacing.AppOpenEvery", "Pacing.AppOpenPresentationDelaySeconds",
             "Pacing.ResetInterstitialCooldownOnRewarded",
-            "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "RequireAgeSignal", "ShowDefaultAgeGate", "MinorMaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
+            "ChildDirected", "UnderAgeOfConsent", "MaxContentRating", "RequireAgeSignal", "MinorMaxContentRating", "NativeAttachTimeoutSeconds", "NativeCloseDelaySeconds", "Pacing",
             "Pacing.InterstitialStartDelaySeconds", "Pacing.InterstitialCooldownSeconds", "Pacing.InterstitialMinSession",
             "Pacing.AdsOffVersions", "Pacing.RemoveAdsBlocks", "Pacing.Placements", "Pacing.BannerStartDelaySeconds",
             "Pacing.AppOpenOnResume", "Pacing.AppOpenOnColdStart", "Pacing.AppOpenStartDelaySeconds", "Pacing.AppOpenMinBackgroundSeconds",
@@ -665,8 +665,7 @@ namespace Sketch.Sdk.Editor
             }
             if (SketchEditorStyles.Section("cs_age", "Age signals (mixed audience)"))
             {
-                Field("RequireAgeSignal", "Require age signal", "Play target audience includes under-18s: consent and ads wait for the age bracket; the tags above are then derived from it (unknown = minor).");
-                Field("ShowDefaultAgeGate", "Show default age screen", "Neutral birth-year keypad. Off when the game shows its own and calls SketchAudience.SetBracket.");
+                Field("RequireAgeSignal", "Require age signal", "Only when the Play target audience includes under-18s and the game asks the age itself: consent and ads wait for SketchAudience.SetBracket; the tags above are then derived from it (unknown = minor). The SDK never shows an age popup.");
                 Field("MinorMaxContentRating", "Minor max ad rating", "Ad content rating cap for players under 18 (under 13 is always G).");
                 SketchEditorStyles.EndSection();
             }

@@ -159,7 +159,7 @@ namespace Sketch.Sdk.Editor
             if (s.AdsBackend == SketchAdsBackend.AdMob)
             {
                 items.Add(s.RequireAgeSignal
-                    ? Ok(AREA_CONSENT, "Age signals", "Consent and ads wait for the age bracket; unknown age = minor.")
+                    ? Ok(AREA_CONSENT, "Age signals", "Consent and ads wait until the game calls SketchAudience.SetBracket (the SDK shows no age popup); unknown age = minor.")
                     : new SketchCheckItem(AREA_CONSENT, "Age signals", SketchCheckStatus.Info, "Off. Turn on Require Age Signal when the Play target audience includes players under 18."));
                 if (f.MediationPrivacyMissing.Count > 0)
                     items.Add(new SketchCheckItem(AREA_CONSENT, "Mediation privacy", SketchCheckStatus.Error,
