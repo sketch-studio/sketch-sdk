@@ -59,7 +59,9 @@ namespace Sketch.Sdk.Editor
             string name = packageName switch
             {
                 "com.google.ads.mobile.mediation.liftoffmonetize" => "LiftoffMonetize",
-                "com.google.ads.mobile.mediation.unityads" => "UnityAds",
+                "com.google.ads.mobile.mediation.unity" => "UnityAds",
+                "com.google.ads.mobile.mediation.inmobi" => "InMobi",
+                "com.google.ads.mobile.mediation.bigo" => "Bigo",
                 "com.google.ads.mobile.mediation.mintegral" => "Mintegral",
                 _ => null
             };

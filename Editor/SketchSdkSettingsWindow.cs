@@ -322,7 +322,9 @@ namespace Sketch.Sdk.Editor
                 SketchEditorStyles.Help("Install the networks used by this game. Updating an adapter can update shared dependencies such as Google Mobile Ads.");
                 var packages = UnityEditor.PackageManager.PackageInfo.GetAllRegisteredPackages();
                 DrawMediationAdapter(packages, "Liftoff Monetize", "liftoffmonetize");
-                DrawMediationAdapter(packages, "Unity Ads", "unityads");
+                DrawMediationAdapter(packages, "Unity Ads", "unity");
+                DrawMediationAdapter(packages, "InMobi", "inmobi");
+                DrawMediationAdapter(packages, "BIGO Ads", "bigo");
                 DrawMediationAdapter(packages, "Mintegral", "mintegral");
                 SketchEditorStyles.EndSection();
             }

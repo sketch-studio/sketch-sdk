@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.12
+- Manager > Ads: the Unity Ads adapter row installs com.google.ads.mobile.mediation.unity (the old id ...mediation.unityads does not exist on OpenUPM); new InMobi and BIGO Ads rows.
+
 ## 1.5.11
 - Setup checklist (Sketch SDK Manager > Consent) reviews every installed AdMob mediation adapter from its Dependencies.xml: Error when older than the version that forwards GDPR (TCF), TFUA and COPPA (Liftoff 7.7.4.2, Unity Ads 4.19.0.1, InMobi 11.3.0.1, BIGO 5.9.0.1), Warning for networks the SDK has not reviewed.
 - Policy rows: missing privacy policy URL (Error), location permission in the Android manifest (Warning), Require Age Signal without the Firebase ad-signal manifest defaults (Warning).
