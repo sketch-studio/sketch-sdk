@@ -290,6 +290,22 @@ namespace Sketch.Sdk
             return true;
         }
 
+        /// <summary>
+        /// Moves / resizes the native that is on screen (1.5.14): same ad, same callbacks, no new impression.
+        /// False when no native is up, the rect is empty or the provider cannot move its view.
+        /// </summary>
+        public static bool MoveNative(Rect screenRect)
+        {
+            if ((!_nativeStarting && !_nativeVisible) || screenRect.width <= 0f || screenRect.height <= 0f) return false;
+            if (!(_provider is ISketchNativeMoveCapability mover)) return false;
+            try { return mover.MoveNative(screenRect); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SketchAds] Native move failed: " + e.Message);
+                return false;
+            }
+        }
+
         public static void HideNative(SketchNativeCloseReason reason = SketchNativeCloseReason.Teardown)
         {
             if (!_nativeStarting && !_nativeVisible) return;

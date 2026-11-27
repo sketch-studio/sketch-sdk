@@ -8,7 +8,7 @@ using Sketch.Sdk;
 namespace Sketch.Sdk
 {
     public sealed class SketchSdkAdMobProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchAdCloseCapability,
-        ISketchRewardedInterstitialProvider, ISketchNamedBannerProvider, ISketchAdInspectorProvider
+        ISketchRewardedInterstitialProvider, ISketchNamedBannerProvider, ISketchAdInspectorProvider, ISketchNativeMoveCapability
     {
         readonly SketchAdMobConfig _config;
         readonly ISketchAdsTelemetry _telemetry;
@@ -408,6 +408,19 @@ namespace Sketch.Sdk
                 DestroyNative(RELOAD_BACKOFF);
                 return false;
             }
+        }
+
+        // 1.5.14: only the custom Android layout owns its window, so only it can move the same ad.
+        public bool MoveNative(Rect screenPixels)
+        {
+            if (!_nativeShown) return false;
+            Rect clamped = SketchNativeInRect.ClampToBanner(screenPixels, Screen.height, BannerHeightPixels);
+            if (clamped.width <= 0f || clamped.height <= 0f) return false;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return SketchAndroidNative.MoveTo(clamped);
+#else
+            return false;
+#endif
         }
 
         public bool ShowNativeInRect(SketchNativeRequest request, SketchNativeCallbacks callbacks)

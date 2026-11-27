@@ -115,6 +115,26 @@ public final class SketchAdmobNative {
         return true;
     }
 
+    // 1.5.14: move / resize the panel that is on screen (same ad, no new impression). x/y: top-left window pixels.
+    public static boolean moveTo(final int x, final int y, final int width, final int height) {
+        final Activity activity = UnityPlayer.currentActivity;
+        if (activity == null || panel == null) return false;
+        activity.runOnUiThread(() -> {
+            if (panel == null) return;
+            try {
+                ViewGroup.LayoutParams raw = panel.getLayoutParams();
+                if (!(raw instanceof WindowManager.LayoutParams)) return;
+                WindowManager.LayoutParams lp = (WindowManager.LayoutParams) raw;
+                lp.x = x;
+                lp.y = y;
+                lp.width = Math.max(1, width);
+                lp.height = Math.max(1, height);
+                activity.getWindowManager().updateViewLayout(panel, lp);
+            } catch (Exception e) { Log.w(TAG, "panel move failed", e); }
+        });
+        return true;
+    }
+
     // Countdown on the close (seconds; 0 = enabled at once). showCountdown=false hides the close until it is enabled.
     // closeOnLeft moves the close to the top-left corner (Unity alternates 3 right : 1 left).
     public static void startCloseCountdown(final int seconds, final boolean showCountdown, final boolean closeOnLeft) {
@@ -375,8 +395,9 @@ public final class SketchAdmobNative {
         hit.addView(closeRing, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
         closeEnabled = false;
         hit.setOnClickListener(v -> { if (closeEnabled) removePanel(activity, true); });
-        // Not clickable while waiting: touches fall through to the ad underneath.
-        hit.setClickable(false);
+        // 1.5.14 (AdMob native policy: the dismiss control must not cause invalid clicks): the close always takes its
+        // own touches; while the countdown runs a tap on it does nothing instead of falling through to the ad.
+        hit.setClickable(true);
         closeHit = hit;
         return hit;
     }
@@ -386,7 +407,7 @@ public final class SketchAdmobNative {
         MAIN.removeCallbacksAndMessages(null);
         if (countdown != null) countdown.cancel();
         closeEnabled = false;
-        closeHit.setClickable(false);
+        closeHit.setClickable(true);
         placeClose(onLeft);
         if (seconds == 0) { enableClose(); return; }
         if (!showCountdown) {

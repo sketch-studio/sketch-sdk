@@ -426,6 +426,12 @@ namespace Sketch.Sdk
 
         public static void HideNative() => SketchSdk.HideNative();
 
+        /// <summary>True while a native in-rect is starting or on screen.</summary>
+        public static bool IsNativeShowing => SketchSdk.IsNativeVisible;
+
+        /// <summary>Moves / resizes the native that is on screen to a new screen rect (same ad, no new impression).</summary>
+        public static bool MoveNative(Rect screenPixels) => SketchSdk.MoveNative(screenPixels);
+
         // ---------------- internals ----------------
 
         static SketchAdsPolicy CreatePolicy(SketchAdsPolicySettings settings) =>

@@ -24,6 +24,11 @@ namespace Sketch.Sdk
         Action _onUserClose;
         Image _track, _trackEdge, _arc, _arcEdge, _glyphA, _glyphB, _glyphEdgeA, _glyphEdgeB;
         Button _close;
+        RectTransform _panelRect, _closeRect;
+        Text _label;
+        string _placement;
+        float _density;
+        bool _onLeft;
         float _remaining;
         int _countdown;
         bool _ready;
@@ -51,6 +56,28 @@ namespace Sketch.Sdk
             _instance.Build(screenPixels, placement, onUserClose);
         }
 
+        /// <summary>1.5.14: moves / resizes the fake native that is on screen (same close state and callback).</summary>
+        public static bool Move(Rect screenPixels)
+        {
+            var view = _instance;
+            if (view == null || view._panelRect == null) return false;
+            view._panelRect.anchoredPosition = screenPixels.position;
+            view._panelRect.sizeDelta = screenPixels.size;
+            Rect closeRect = SketchNativeClose.CloseRect(screenPixels, view._density, view._onLeft);
+            LastCloseRect = closeRect;
+            if (view._closeRect != null)
+            {
+                view._closeRect.anchoredPosition = closeRect.position;
+                view._closeRect.sizeDelta = closeRect.size;
+            }
+            if (view._label != null)
+                view._label.text = $"NATIVE IN-RECT (Editor)\n{view._placement}\n{screenPixels.width:F0} x {screenPixels.height:F0} px";
+            LastPanelRect = screenPixels;
+            return true;
+        }
+
+        public static Rect LastPanelRect { get; private set; }
+
         public static void Close()
         {
             var view = _instance;
@@ -75,6 +102,9 @@ namespace Sketch.Sdk
 
             // Overlay canvas, no scaler: 1 unit = 1 screen pixel = the rect the Android layout receives.
             RectTransform panel = Rect01("Panel", transform, rect);
+            _panelRect = panel;
+            _placement = placement;
+            LastPanelRect = rect;
             panel.gameObject.AddComponent<Image>().color = Color.white;
 
             Text label = Child("Label", panel).gameObject.AddComponent<Text>();
@@ -86,12 +116,15 @@ namespace Sketch.Sdk
             label.color = new Color(0.35f, 0.35f, 0.35f);
             label.raycastTarget = false;
             label.text = $"NATIVE IN-RECT (Editor)\n{placement}\n{rect.width:F0} x {rect.height:F0} px";
+            _label = label;
 
             bool onLeft = SketchNativeClose.NextOnLeft();
             float density = SketchNativeClose.EditorDensity(Screen.width, Screen.height);
             Rect closeRect = SketchNativeClose.CloseRect(rect, density, onLeft);
             LastCloseRect = closeRect;
             LastCloseOnLeft = onLeft;
+            _density = density;
+            _onLeft = onLeft;
             BuildClose(closeRect, density);
             _countdown = SketchNativeClose.CountdownSeconds;
             _remaining = _countdown;
@@ -102,6 +135,7 @@ namespace Sketch.Sdk
         void BuildClose(Rect rect, float density)
         {
             RectTransform hit = Rect01("Close", transform, rect);
+            _closeRect = hit;
             var hitImage = hit.gameObject.AddComponent<Image>();
             hitImage.color = Color.clear;
             _close = hit.gameObject.AddComponent<Button>();

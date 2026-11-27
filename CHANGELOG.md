@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.14
+- SketchNativeFit.TopBand: portrait top band above a given Y (loading bar) with equal padding; zero rect when too low.
+- SketchAds.MoveNative / SketchSdk.MoveNative (ISketchNativeMoveCapability): move or resize the native that is on screen without a new impression. Android custom layout updates its window; the Editor fake moves its panel. SketchAds.IsNativeShowing.
+- Android native close: the close control always takes its own touches. During the countdown a tap on it does nothing instead of falling through to the ad (AdMob native policy: the dismiss control must not cause invalid clicks).
+
 ## 1.5.13
 - Removed the built-in birth-year age screen (SketchAgeGate) and the Show Default Age Gate setting: the SDK never shows a popup asking the player anything except the legally required UMP consent form in regulated regions. Require Age Signal stays opt-in for games that ask the age themselves and call SketchAudience.SetBracket.
 

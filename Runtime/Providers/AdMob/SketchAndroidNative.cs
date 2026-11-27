@@ -71,6 +71,17 @@ namespace Sketch.Sdk
             return CallBool("showInRect", x, y, w, h, placement ?? string.Empty);
         }
 
+        /// <summary>Moves the native window that is on screen (same ad). screenPixels: Unity screen rect, bottom-left origin.</summary>
+        public static bool MoveTo(Rect screenPixels)
+        {
+            if (!Supported) return false;
+            int x = Mathf.RoundToInt(screenPixels.xMin);
+            int y = Mathf.RoundToInt(Screen.height - screenPixels.yMax);
+            int w = Mathf.Max(1, Mathf.RoundToInt(screenPixels.width));
+            int h = Mathf.Max(1, Mathf.RoundToInt(screenPixels.height));
+            return CallBool("moveTo", x, y, w, h);
+        }
+
         public static void StartCloseCountdown(int seconds, bool showCountdown, bool closeOnLeft)
         {
             if (Supported) Call("startCloseCountdown", seconds, showCountdown, closeOnLeft);

@@ -8,7 +8,7 @@ namespace Sketch.Sdk
     /// callbacks arrive on the next frame like a real SDK. Toggle SimulateNoFill to test the "no ad" paths.
     /// </summary>
     public sealed class SketchEditorFakeProvider : ISketchAdsProvider, ISketchBannerAdsProvider, ISketchNativeAdsProvider, ISketchBannerLayoutEvents, ISketchAdCloseCapability,
-        ISketchRewardedInterstitialProvider
+        ISketchRewardedInterstitialProvider, ISketchNativeMoveCapability
     {
         public static bool SimulateNoFill;
         public static bool SimulateRewardSkipped;
@@ -102,6 +102,7 @@ namespace Sketch.Sdk
             _native = callbacks;
             Rect rect = SketchNativeInRect.ClampToBanner(request.ScreenRect, Screen.height, _bannerVisible ? BannerHeightPixels : 0f);
             SketchLog.Info($"[FakeAds] Native in rect {rect}.");
+            LastNativeRect = rect;
 #if UNITY_EDITOR
             // Same layout + round countdown close as the Android custom native; only the user closes it.
             SketchEditorNativeView.Show(rect, request.Placement, OnEditorNativeUserClose);
@@ -109,6 +110,21 @@ namespace Sketch.Sdk
             callbacks?.Shown();
             return true;
         }
+
+        public bool MoveNative(Rect screenPixels)
+        {
+            if (_native == null) return false;
+            Rect rect = SketchNativeInRect.ClampToBanner(screenPixels, Screen.height, _bannerVisible ? BannerHeightPixels : 0f);
+            if (rect.width <= 0f || rect.height <= 0f) return false;
+            LastNativeRect = rect;
+#if UNITY_EDITOR
+            SketchEditorNativeView.Move(rect);
+#endif
+            return true;
+        }
+
+        /// <summary>Last rect the fake native was shown at or moved to (tests).</summary>
+        public static Rect LastNativeRect { get; private set; }
 
         void OnEditorNativeUserClose()
         {

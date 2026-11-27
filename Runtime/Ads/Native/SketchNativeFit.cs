@@ -86,6 +86,22 @@ namespace Sketch.Sdk
             return new Rect(0f, screenHeight - side, side, side);
         }
 
+        /// <summary>
+        /// Portrait top band (1.5.14): the area above bottomY (e.g. the top edge of a loading bar) with the same padding
+        /// on the left, top, right and above bottomY. All values are screen pixels, bottom-left origin.
+        /// Returns a zero-size rect when the band would be lower than MinBandHeight(screenHeight).
+        /// </summary>
+        public static Rect TopBand(Rect safe, float screenHeight, float bottomY, float padding)
+        {
+            float pad = Mathf.Max(0f, padding);
+            float xMin = safe.xMin + pad, xMax = safe.xMax - pad;
+            float yMin = Mathf.Max(safe.yMin, bottomY) + pad, yMax = safe.yMax - pad;
+            if (xMax - xMin <= 0f || yMax - yMin < MinBandHeight(screenHeight)) return new Rect(xMin, yMin, 0f, 0f);
+            return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+        }
+
+        public static float MinBandHeight(float screenHeight) => 300f * Mathf.Max(0.5f, screenHeight / 1080f);
+
         public static Rect SideColumn(Rect safe, float screenHeight, Side side, float bannerHeightPixels, out Rect closeStrip)
         {
             float k = Mathf.Max(0.5f, screenHeight / 1080f);
